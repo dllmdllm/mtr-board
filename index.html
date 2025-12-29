@@ -242,11 +242,11 @@
         </div>
       </div>
       <div class="meta">
-        <span class="pill">自動更新：30s · 倒數 <span id="countdown">30</span>s</span>
+        <span class="pill">自動更新：<span id="countdown">30</span>s</span>
         <span class="toggle-group">
-          <button class="toggle-btn" data-count="1">最近 1 班</button>
-          <button class="toggle-btn" data-count="2">最近 2 班</button>
-          <button class="toggle-btn active" data-count="4">最近 4 班</button>
+          <button class="toggle-btn" data-count="1">最後 1 班</button>
+          <button class="toggle-btn" data-count="2">最後 2 班</button>
+          <button class="toggle-btn active" data-count="3">最後 3 班</button>
         </span>
         <button id="refresh" class="btn">即時刷新</button>
       </div>
@@ -286,7 +286,7 @@
     const refreshBtn = document.getElementById("refresh");
     const countdownEl = document.getElementById("countdown");
     const toggleButtons = Array.from(document.querySelectorAll(".toggle-btn"));
-    let visibleCount = 4;
+    let visibleCount = 3;
     let remaining = REFRESH_SECONDS;
 
     function getSavedOrder() {
