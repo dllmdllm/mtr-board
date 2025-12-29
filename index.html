@@ -400,7 +400,7 @@
       const time = train.time ?? "--";
       row.title = `月台 ${plat} | 到站 ${time}`;
       row.innerHTML = `
-        <span class="train-dest">${destName}</span>
+        <span class="train-dest">月台 ${plat} ${destName}</span>
         <span class="train-mins">${mins} 分鐘</span>
       `;
       return row;
