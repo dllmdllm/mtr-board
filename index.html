@@ -538,14 +538,11 @@
       if (Number.isNaN(displaySec)) displaySec = remainingSec;
       const diff = remainingSec - displaySec;
       if (diff > NORMAL_DIFF) {
-        state.delayHint = diff > MEDIUM_DIFF;
         displaySec = displaySec + Math.min(MAX_SLEW, diff);
       } else if (diff < -MAX_SLEW) {
         displaySec = displaySec + Math.max(-MAX_SLEW, diff);
-        state.delayHint = false;
       } else {
         displaySec = remainingSec;
-        state.delayHint = false;
       }
       state.displaySec = displaySec;
       rowState.set(key, state);
@@ -554,10 +551,7 @@
       const hintEl = row.querySelector(".train-hint");
       const label = formatCountdown(displaySec);
       if (minsEl) minsEl.textContent = label;
-      if (hintEl) {
-        const suppressHint = label === "就到站" || label === "已開";
-        hintEl.textContent = !suppressHint && state.delayHint ? "延誤" : "";
-      }
+      if (hintEl) hintEl.textContent = "";
     }
 
     function updateAllRows() {
