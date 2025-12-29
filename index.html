@@ -578,9 +578,18 @@
         const upTrains = (entry?.UP || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
         const hasAnyTrain = downTrains.length > 0 || upTrains.length > 0;
 
-        card.style.display = hasAnyTrain ? "" : "none";
-        if (!hasAnyTrain) return;
+        if (!hasAnyTrain) {
+          if (code === "RAC") {
+            card.style.display = "none";
+            return;
+          }
+          card.style.display = "";
+          fillList(downList, [], "暫無班次", code, "DOWN");
+          fillList(upList, [], "暫無班次", code, "UP");
+          return;
+        }
 
+        card.style.display = "";
         fillList(downList, downTrains, "", code, "DOWN");
         fillList(upList, upTrains, "", code, "UP");
       });
