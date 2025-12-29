@@ -56,11 +56,23 @@
       position: relative;
       z-index: 1;
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       gap: 16px;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 24px;
+    }
+
+    .top-left,
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: nowrap;
+    }
+
+    .top-left {
+      min-width: 0;
     }
 
     .title {
@@ -104,6 +116,7 @@
       z-index: 1;
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-auto-flow: row;
       gap: 14px;
     }
 
@@ -148,6 +161,7 @@
       padding: 12px 14px;
       display: grid;
       gap: 10px;
+      min-width: 0;
       backdrop-filter: blur(8px);
       box-shadow: var(--shadow);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -251,8 +265,7 @@
 
     @media (max-width: 760px) {
       header {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-wrap: wrap;
       }
 
       .card-body {
