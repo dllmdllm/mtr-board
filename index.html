@@ -120,6 +120,33 @@
       gap: 14px;
     }
 
+    .line-tabs {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      gap: 8px;
+      padding: 8px 0;
+      background: linear-gradient(180deg, rgba(12, 27, 42, 0.9), rgba(12, 27, 42, 0.6));
+      backdrop-filter: blur(6px);
+    }
+
+    .line-tab {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .line-tab.active {
+      background: var(--tab-color);
+      color: #0c1b2a;
+      border-color: transparent;
+    }
+
     .line-section {
       display: grid;
       gap: 10px;
@@ -302,6 +329,10 @@
         gap: 10px;
       }
 
+      .line-tabs {
+        top: 0;
+      }
+
       .station-card {
         padding: 8px 10px;
         gap: 6px;
@@ -328,7 +359,7 @@
         <span id="last-update" class="pill">更新中...</span>
       </div>
       <div class="top-right">
-        <span class="pill">自動更新：<span id="countdown">30</span>s</span>
+        <span class="pill">自動更新：<span id="countdown">15</span>s</span>
         <span class="toggle-group">
           <button class="toggle-btn" data-count="1">1 班</button>
           <button class="toggle-btn" data-count="2">2 班</button>
@@ -338,6 +369,11 @@
         <button id="refresh" class="btn">即時刷新</button>
       </div>
     </header>
+
+    <div class="line-tabs">
+      <button class="line-tab active" data-line="EAL" style="--tab-color:#53B7E8;">東鐵綫</button>
+      <button class="line-tab" data-line="KTL" style="--tab-color:#00A551;">觀塘綫</button>
+    </div>
 
     <section id="board" class="board"></section>
   </div>
@@ -397,9 +433,12 @@
     const refreshBtn = document.getElementById("refresh");
     const countdownEl = document.getElementById("countdown");
     const toggleButtons = Array.from(document.querySelectorAll(".toggle-btn"));
+    const lineTabs = Array.from(document.querySelectorAll(".line-tab"));
     let visibleCount = 4;
     let remaining = REFRESH_SECONDS;
     const rowState = new Map();
+    const ACTIVE_LINE_KEY = "activeLine";
+    let activeLine = localStorage.getItem(ACTIVE_LINE_KEY) || "EAL";
 
     function hexToRgb(hex) {
       const cleaned = hex.replace("#", "");
@@ -444,6 +483,7 @@
         card.style.animationDelay = `${idx * 0.02}s`;
         board.appendChild(card);
       });
+      applyLineFilter();
     }
 
     function colorForPlat(plat) {
@@ -554,6 +594,13 @@
       if (hintEl) hintEl.textContent = "";
     }
 
+    function applyLineFilter() {
+      lineTabs.forEach(btn => btn.classList.toggle("active", btn.dataset.line === activeLine));
+      document.querySelectorAll(".station-card").forEach(card => {
+        card.dataset.filtered = card.dataset.line === activeLine ? "0" : "1";
+      });
+    }
+
     function updateAllRows() {
       document.querySelectorAll(".station-card .train-row").forEach(updateRowCountdown);
     }
@@ -585,6 +632,10 @@
       cards.forEach(card => {
         const line = card.dataset.line || "EAL";
         const code = card.dataset.code;
+        if (line !== activeLine) {
+          card.style.display = "none";
+          return;
+        }
         const data = byKey.get(`${line}-${code}`);
         const entry = data?.data?.[`${line}-${code}`];
         const downList = card.querySelector('[data-dir="DOWN"] .train-list');
@@ -625,6 +676,15 @@
         const count = Number(btn.dataset.count);
         visibleCount = Number.isNaN(count) ? 1 : count;
         toggleButtons.forEach(b => b.classList.toggle("active", b === btn));
+        refreshAll();
+      });
+    });
+
+    lineTabs.forEach(btn => {
+      btn.addEventListener("click", () => {
+        activeLine = btn.dataset.line || "EAL";
+        localStorage.setItem(ACTIVE_LINE_KEY, activeLine);
+        applyLineFilter();
         refreshAll();
       });
     });
