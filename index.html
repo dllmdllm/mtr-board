@@ -530,8 +530,12 @@
 
       const minsEl = row.querySelector(".train-mins");
       const hintEl = row.querySelector(".train-hint");
-      if (minsEl) minsEl.textContent = formatCountdown(displaySec);
-      if (hintEl) hintEl.textContent = state.delayHint ? "可能延誤" : "";
+      const label = formatCountdown(displaySec);
+      if (minsEl) minsEl.textContent = label;
+      if (hintEl) {
+        const suppressHint = label === "即將到站" || label === "已開出";
+        hintEl.textContent = !suppressHint && state.delayHint ? "可能延誤" : "";
+      }
     }
 
     function updateAllRows() {
