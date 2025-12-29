@@ -103,7 +103,8 @@
       position: relative;
       z-index: 1;
       display: grid;
-      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
     }
 
     .line-section {
@@ -175,14 +176,6 @@
       font-size: 18px;
     }
 
-
-    .drag-handle {
-      font-size: 16px;
-      color: var(--muted);
-      cursor: grab;
-      user-select: none;
-      touch-action: none;
-    }
 
     .card-body {
       display: grid;
@@ -265,6 +258,11 @@
       .card-body {
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 6px;
+      }
+
+      .board {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
       }
 
       .station-card {
