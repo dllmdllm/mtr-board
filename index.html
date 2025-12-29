@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MTR Next Train Board</title>
+  <title>MTR EAL Next Train Board</title>
   <style>
     :root {
       --bg-1: #0c1b2a;
@@ -310,209 +310,29 @@
   </div>
 
   <script>
-    const LINES = [
-      {
-        "code": "AEL",
-        "name": "機場快綫",
-        "color": "#00888A",
-        "stations": [
-          { "code": "HOK", "name": "Hong Kong" },
-          { "code": "KOW", "name": "Kowloon" },
-          { "code": "TSY", "name": "Tsing Yi" },
-          { "code": "AIR", "name": "Airport" },
-          { "code": "AWE", "name": "AsiaWorld Expo" }
-        ]
-      },
-      {
-        "code": "TCL",
-        "name": "東涌綫",
-        "color": "#F47B20",
-        "stations": [
-          { "code": "HOK", "name": "Hong Kong" },
-          { "code": "KOW", "name": "Kowloon" },
-          { "code": "OLY", "name": "Olympic" },
-          { "code": "NAC", "name": "南昌" },
-          { "code": "LAK", "name": "茘景" },
-          { "code": "TSY", "name": "Tsing Yi" },
-          { "code": "SUN", "name": "Sunny Bay" },
-          { "code": "TUC", "name": "Tung Chung" }
-        ]
-      },
-      {
-        "code": "TML",
-        "name": "屯馬綫",
-        "color": "#9A3A2B",
-        "stations": [
-          { "code": "WKS", "name": "Wu Kai Sha" },
-          { "code": "MOS", "name": "Ma On Shan" },
-          { "code": "HEO", "name": "Heng On" },
-          { "code": "TSH", "name": "Tai Shui Hang" },
-          { "code": "SHM", "name": "Shek Mun" },
-          { "code": "CIO", "name": "City One" },
-          { "code": "STW", "name": "Sha Tin Wai" },
-          { "code": "CKT", "name": "Che Kung Temple" },
-          { "code": "TAW", "name": "Tai Wai" },
-          { "code": "HIK", "name": "Hin Keng" },
-          { "code": "DIH", "name": "Diamond Hill" },
-          { "code": "KAT", "name": "Kai Tak" },
-          { "code": "SUW", "name": "Sung Wong Toi" },
-          { "code": "TKW", "name": "To Kwa Wan" },
-          { "code": "HOM", "name": "Ho Man Tin" },
-          { "code": "HUH", "name": "Hung Hom" },
-          { "code": "ETS", "name": "East Tsim Sha Tsui" },
-          { "code": "AUS", "name": "Austin" },
-          { "code": "NAC", "name": "南昌" },
-          { "code": "MEF", "name": "美孚" },
-          { "code": "TWW", "name": "荃灣西" },
-          { "code": "KSR", "name": "錦上路" },
-          { "code": "YUL", "name": "元朗" },
-          { "code": "LOP", "name": "朗屏" },
-          { "code": "TIS", "name": "天水圍" },
-          { "code": "SIH", "name": "兆康" },
-          { "code": "TUM", "name": "屯門" }
-        ]
-      },
-      {
-        "code": "TKL",
-        "name": "將軍澳綫",
-        "color": "#7D3C98",
-        "stations": [
-          { "code": "NOP", "name": "North Point" },
-          { "code": "QUB", "name": "Quarry Bay" },
-          { "code": "YAT", "name": "Yau Tong" },
-          { "code": "TIK", "name": "Tiu Keng Leng" },
-          { "code": "TKO", "name": "Tseung Kwan O" },
-          { "code": "LHP", "name": "LOHAS Park" },
-          { "code": "HAH", "name": "Hang Hau" },
-          { "code": "POA", "name": "Po Lam" }
-        ]
-      },
-      {
-        "code": "EAL",
-        "name": "東鐵綫",
-        "color": "#53B7E8",
-        "stations": [
-          { "code": "ADM", "name": "Admiralty" },
-          { "code": "EXC", "name": "Exhibition Centre" },
-          { "code": "HUH", "name": "Hung Hom" },
-          { "code": "MKK", "name": "Mong Kok East" },
-          { "code": "KOT", "name": "Kowloon Tong" },
-          { "code": "TAW", "name": "Tai Wai" },
-          { "code": "SHT", "name": "Sha Tin" },
-          { "code": "FOT", "name": "Fo Tan" },
-          { "code": "RAC", "name": "Racecourse" },
-          { "code": "UNI", "name": "University" },
-          { "code": "TAP", "name": "Tai Po Market" },
-          { "code": "TWO", "name": "Tai Wo" },
-          { "code": "FAN", "name": "Fanling" },
-          { "code": "SHS", "name": "Sheung Shui" },
-          { "code": "LOW", "name": "Lo Wu" },
-          { "code": "LMC", "name": "Lok Ma Chau" }
-        ]
-      },
-      {
-        "code": "SIL",
-        "name": "南港島綫",
-        "color": "#B5BD00",
-        "stations": [
-          { "code": "ADM", "name": "Admiralty" },
-          { "code": "OCP", "name": "Ocean Park" },
-          { "code": "WCH", "name": "Wong Chuk Hang" },
-          { "code": "LET", "name": "Lei Tung" },
-          { "code": "SOH", "name": "South Horizons" }
-        ]
-      },
-      {
-        "code": "TWL",
-        "name": "荃灣綫",
-        "color": "#E60012",
-        "stations": [
-          { "code": "CEN", "name": "Central" },
-          { "code": "ADM", "name": "Admiralty" },
-          { "code": "TST", "name": "Tsim Sha Tsui" },
-          { "code": "JOR", "name": "Jordan" },
-          { "code": "YMT", "name": "油麻地" },
-          { "code": "MOK", "name": "旺角" },
-          { "code": "PRE", "name": "太子" },
-          { "code": "SSP", "name": "深水埗" },
-          { "code": "CSW", "name": "長沙灣" },
-          { "code": "LCK", "name": "茘枝角" },
-          { "code": "MEF", "name": "美孚" },
-          { "code": "LAK", "name": "茘景" },
-          { "code": "KWF", "name": "葵芳" },
-          { "code": "KWH", "name": "葵興" },
-          { "code": "TWH", "name": "大窩口" },
-          { "code": "TSW", "name": "荃灣" }
-        ]
-      },
-      {
-        "code": "ISL",
-        "name": "港島綫",
-        "color": "#0072CE",
-        "stations": [
-          { "code": "KET", "name": "Kennedy Town" },
-          { "code": "HKU", "name": "HKU" },
-          { "code": "SYP", "name": "Sai Ying Pun" },
-          { "code": "SHW", "name": "Sheung Wan" },
-          { "code": "CEN", "name": "Central" },
-          { "code": "ADM", "name": "Admiralty" },
-          { "code": "WAC", "name": "Wan Chai" },
-          { "code": "CAB", "name": "Causeway Bay" },
-          { "code": "TIH", "name": "Tin Hau" },
-          { "code": "FOH", "name": "Fortress Hill" },
-          { "code": "NOP", "name": "North Point" },
-          { "code": "QUB", "name": "Quarry Bay" },
-          { "code": "TAK", "name": "Tai Koo" },
-          { "code": "SWH", "name": "Sai Wan Ho" },
-          { "code": "SKW", "name": "Shau Kei Wan" },
-          { "code": "HFC", "name": "Heng Fa Chuen" },
-          { "code": "CHW", "name": "Chai Wan" }
-        ]
-      },
-      {
-        "code": "KTL",
-        "name": "觀塘綫",
-        "color": "#00A551",
-        "stations": [
-          { "code": "WHA", "name": "Whampoa" },
-          { "code": "HOM", "name": "Ho Man Tin" },
-          { "code": "YMT", "name": "油麻地" },
-          { "code": "MOK", "name": "旺角" },
-          { "code": "PRE", "name": "太子" },
-          { "code": "SKM", "name": "Shek Kip Mei" },
-          { "code": "KOT", "name": "Kowloon Tong" },
-          { "code": "LOF", "name": "Lok Fu" },
-          { "code": "WTS", "name": "Wong Tai Sin" },
-          { "code": "DIH", "name": "Diamond Hill" },
-          { "code": "CHH", "name": "Choi Hung" },
-          { "code": "KOB", "name": "Kowloon Bay" },
-          { "code": "NTK", "name": "Ngau Tau Kok" },
-          { "code": "KWT", "name": "Kwun Tong" },
-          { "code": "LAT", "name": "Lam Tin" },
-          { "code": "YAT", "name": "Yau Tong" },
-          { "code": "TIK", "name": "Tiu Keng Leng" }
-        ]
-      },
-      {
-        "code": "DRL",
-        "name": "迪士尼綫",
-        "color": "#E4007F",
-        "stations": [
-          { "code": "SUN", "name": "Sunny Bay" },
-          { "code": "DIS", "name": "Disneyland Resort" }
-        ]
-      }
+    const STATIONS = [
+      { code: "ADM", name: "金鐘" },
+      { code: "EXC", name: "會展" },
+      { code: "HUH", name: "紅磡" },
+      { code: "MKK", name: "旺角東" },
+      { code: "KOT", name: "九龍塘" },
+      { code: "TAW", name: "大圍" },
+      { code: "SHT", name: "沙田" },
+      { code: "FOT", name: "火炭" },
+      { code: "RAC", name: "馬場" },
+      { code: "UNI", name: "大學" },
+      { code: "TAP", name: "大埔墟" },
+      { code: "TWO", name: "太和" },
+      { code: "FAN", name: "粉嶺" },
+      { code: "SHS", name: "上水" },
+      { code: "LOW", name: "羅湖" },
+      { code: "LMC", name: "落馬洲" }
     ];
 
-    const CODE_TO_NAME = new Map();
-    LINES.forEach(line => {
-      line.stations.forEach(st => {
-        if (!CODE_TO_NAME.has(st.code)) CODE_TO_NAME.set(st.code, st.name);
-      });
-    });
+    const CODE_TO_NAME = new Map(STATIONS.map(s => [s.code, s.name]));
 
     const API_BASE = "https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php";
-    const ORDER_KEY_PREFIX = "order_";
+    const ORDER_KEY = "ealOrder";
     const REFRESH_SECONDS = 30;
 
     const board = document.getElementById("board");
@@ -523,9 +343,9 @@
     let visibleCount = 4;
     let remaining = REFRESH_SECONDS;
 
-    function getSavedOrder(key) {
+    function getSavedOrder() {
       try {
-        const raw = localStorage.getItem(key);
+        const raw = localStorage.getItem(ORDER_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         if (!Array.isArray(parsed)) return null;
@@ -535,39 +355,29 @@
       }
     }
 
-    function saveOrder(key, listEl) {
-      const codes = Array.from(listEl.querySelectorAll(".station-card"))
+    function saveOrder() {
+      const codes = Array.from(board.querySelectorAll(".station-card"))
         .map(card => card.dataset.code);
-      localStorage.setItem(key, JSON.stringify(codes));
+      localStorage.setItem(ORDER_KEY, JSON.stringify(codes));
     }
 
-    function orderedStations(stations, order) {
-      if (!order) return stations.slice();
-      const map = new Map(stations.map(s => [s.code, s]));
+    function orderedStations(order) {
+      if (!order) return STATIONS.slice();
+      const map = new Map(STATIONS.map(s => [s.code, s]));
       const list = [];
       for (const code of order) {
         if (map.has(code)) list.push(map.get(code));
       }
-      for (const s of stations) {
+      for (const s of STATIONS) {
         if (!order.includes(s.code)) list.push(s);
       }
       return list;
     }
 
-    function hexToRgb(hex) {
-      const cleaned = hex.replace("#", "");
-      const value = parseInt(cleaned, 16);
-      const r = (value >> 16) & 255;
-      const g = (value >> 8) & 255;
-      const b = value & 255;
-      return `${r}, ${g}, ${b}`;
-    }
-
-    function makeCard(station, line) {
+    function makeCard(station) {
       const card = document.createElement("div");
       card.className = "station-card fade-in";
       card.dataset.code = station.code;
-      card.dataset.line = line.code;
 
       card.innerHTML = `
         <div class="card-head">
@@ -589,29 +399,14 @@
     }
 
     function renderBoard() {
+      const order = getSavedOrder();
       board.innerHTML = "";
-      LINES.forEach(line => {
-        const section = document.createElement("section");
-        section.className = "line-section";
-        section.style.setProperty("--line-color", line.color);
-        section.style.setProperty("--line-color-rgb", hexToRgb(line.color));
-        section.innerHTML = `
-          <div class="line-head">
-            <span class="line-dot"></span>
-            <span class="line-name">${line.name}</span>
-          </div>
-          <div class="line-list"></div>
-        `;
-        const list = section.querySelector(".line-list");
-        const order = getSavedOrder(`${ORDER_KEY_PREFIX}${line.code}`);
-        orderedStations(line.stations, order).forEach((s, idx) => {
-          const card = makeCard(s, line);
-          card.style.animationDelay = `${idx * 0.02}s`;
-          list.appendChild(card);
-        });
-        enableDrag(list, `${ORDER_KEY_PREFIX}${line.code}`);
-        board.appendChild(section);
+      orderedStations(order).forEach((s, idx) => {
+        const card = makeCard(s);
+        card.style.animationDelay = `${idx * 0.02}s`;
+        board.appendChild(card);
       });
+      enableDrag();
     }
 
     function trainRow(train) {
@@ -642,8 +437,8 @@
       trains.slice(0, visibleCount).forEach(train => listEl.appendChild(trainRow(train)));
     }
 
-    async function fetchStation(line, code) {
-      const url = `${API_BASE}?line=${line}&sta=${code}&lang=TC`;
+    async function fetchStation(code) {
+      const url = `${API_BASE}?line=EAL&sta=${code}&lang=TC`;
       const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
@@ -655,28 +450,21 @@
       remaining = REFRESH_SECONDS;
       countdownEl.textContent = remaining;
 
-      const requests = [];
-      LINES.forEach(line => {
-        line.stations.forEach(st => {
-          const key = `${line.code}-${st.code}`;
-          requests.push(
-            fetchStation(line.code, st.code)
-              .then(data => ({ key, data }))
-              .catch(() => ({ key, data: null }))
-          );
-        });
-      });
+      const requests = STATIONS.map(s =>
+        fetchStation(s.code)
+          .then(data => ({ code: s.code, data }))
+          .catch(() => ({ code: s.code, data: null }))
+      );
 
       const results = await Promise.all(requests);
-      const byKey = new Map(results.map(r => [r.key, r.data]));
+      const byCode = new Map(results.map(r => [r.code, r.data]));
       const now = new Date();
       const timeStr = now.toLocaleTimeString("zh-HK", { hour12: false });
 
       cards.forEach(card => {
-        const line = card.dataset.line;
         const code = card.dataset.code;
-        const data = byKey.get(`${line}-${code}`);
-        const entry = data?.data?.[`${line}-${code}`];
+        const data = byCode.get(code);
+        const entry = data?.data?.[`EAL-${code}`];
         const downList = card.querySelector('[data-dir="DOWN"] .train-list');
         const upList = card.querySelector('[data-dir="UP"] .train-list');
         const downTrains = (entry?.DOWN || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
@@ -693,10 +481,10 @@
       lastUpdate.textContent = `更新：${timeStr}`;
     }
 
-    function enableDrag(listEl, storageKey) {
+    function enableDrag() {
       let dragging = null;
 
-      listEl.addEventListener("pointerdown", (event) => {
+      board.addEventListener("pointerdown", (event) => {
         const handle = event.target.closest(".drag-handle");
         if (!handle) return;
         const card = handle.closest(".station-card");
@@ -707,15 +495,15 @@
         dragging.setPointerCapture(event.pointerId);
       });
 
-      listEl.addEventListener("pointermove", (event) => {
+      board.addEventListener("pointermove", (event) => {
         if (!dragging) return;
         const target = document.elementFromPoint(event.clientX, event.clientY);
         const over = target?.closest(".station-card");
-        if (!over || over === dragging || over.parentElement !== listEl) return;
+        if (!over || over === dragging || over.parentElement !== board) return;
 
         const rect = over.getBoundingClientRect();
         const shouldInsertAfter = event.clientY > rect.top + rect.height / 2;
-        listEl.insertBefore(dragging, shouldInsertAfter ? over.nextSibling : over);
+        board.insertBefore(dragging, shouldInsertAfter ? over.nextSibling : over);
       });
 
       function stopDrag(event) {
@@ -723,11 +511,11 @@
         dragging.classList.remove("dragging");
         dragging.releasePointerCapture(event.pointerId);
         dragging = null;
-        saveOrder(storageKey, listEl);
+        saveOrder();
       }
 
-      listEl.addEventListener("pointerup", stopDrag);
-      listEl.addEventListener("pointercancel", stopDrag);
+      board.addEventListener("pointerup", stopDrag);
+      board.addEventListener("pointercancel", stopDrag);
     }
 
     refreshBtn.addEventListener("click", refreshAll);
