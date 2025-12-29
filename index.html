@@ -109,9 +109,9 @@
       background: linear-gradient(145deg, rgba(83, 183, 232, 0.22), rgba(255, 255, 255, 0.06));
       border: 1px solid rgba(83, 183, 232, 0.45);
       border-radius: 16px;
-      padding: 16px 18px;
+      padding: 12px 14px;
       display: grid;
-      gap: 12px;
+      gap: 10px;
       backdrop-filter: blur(8px);
       box-shadow: var(--shadow);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -137,7 +137,7 @@
     .station-name {
       font-family: "Fraunces", "Times New Roman", serif;
       font-weight: 700;
-      font-size: 20px;
+      font-size: 18px;
     }
 
 
@@ -152,7 +152,7 @@
     .card-body {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 18px;
+      gap: 10px;
     }
 
     .dir-col {
@@ -167,12 +167,13 @@
     }
 
     .train-row {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr auto;
       align-items: center;
-      justify-content: space-between;
-      font-size: 15px;
+      font-size: 14px;
+      column-gap: 8px;
       border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
-      padding-bottom: 4px;
+      padding-bottom: 2px;
     }
 
     .train-row:last-child {
@@ -227,6 +228,20 @@
 
       .card-body {
         grid-template-columns: 1fr;
+      }
+
+      .station-card {
+        padding: 10px 12px;
+        gap: 8px;
+      }
+
+      .station-name {
+        font-size: 17px;
+      }
+
+      .train-row {
+        font-size: 13px;
+        padding-bottom: 2px;
       }
     }
   </style>
