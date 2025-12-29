@@ -756,8 +756,8 @@
         const upList = card.querySelector('[data-dir="UP"] .train-list');
         if (!data || !entry) {
           card.style.display = "";
-          fillList(downList, [], "服務更新中", code, "DOWN");
-          fillList(upList, [], "服務更新中", code, "UP");
+          fillList(downList, [], "更新中", code, "DOWN");
+          fillList(upList, [], "更新中", code, "UP");
           return;
         }
         const downTrains = (entry?.DOWN || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
@@ -780,7 +780,7 @@
         fillList(upList, upTrains, "", code, "UP");
       });
 
-      lastUpdate.textContent = `更新：${timeStr}`;
+      lastUpdate.textContent = timeStr;
       updateAllRows();
     }
 
