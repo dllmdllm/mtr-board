@@ -353,6 +353,7 @@
 
     const API_BASE = "https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php";
     const REFRESH_SECONDS = 30;
+    const LINE_COLOR = "#53B7E8";
 
     const board = document.getElementById("board");
     const lastUpdate = document.getElementById("last-update");
@@ -362,10 +363,21 @@
     let visibleCount = 4;
     let remaining = REFRESH_SECONDS;
 
+    function hexToRgb(hex) {
+      const cleaned = hex.replace("#", "");
+      const value = parseInt(cleaned, 16);
+      const r = (value >> 16) & 255;
+      const g = (value >> 8) & 255;
+      const b = value & 255;
+      return `${r}, ${g}, ${b}`;
+    }
+
     function makeCard(station) {
       const card = document.createElement("div");
       card.className = "station-card fade-in";
       card.dataset.code = station.code;
+      card.style.setProperty("--line-color", LINE_COLOR);
+      card.style.setProperty("--line-color-rgb", hexToRgb(LINE_COLOR));
 
       card.innerHTML = `
         <div class="card-head">
