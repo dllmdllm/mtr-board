@@ -642,8 +642,8 @@
       trains.slice(0, visibleCount).forEach(train => listEl.appendChild(trainRow(train)));
     }
 
-    async function fetchStation(code) {
-      const url = `${API_BASE}?line=EAL&sta=${code}&lang=TC`;
+    async function fetchStation(line, code) {
+      const url = `${API_BASE}?line=${line}&sta=${code}&lang=TC`;
       const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
@@ -655,21 +655,28 @@
       remaining = REFRESH_SECONDS;
       countdownEl.textContent = remaining;
 
-      const requests = STATIONS.map(s =>
-        fetchStation(s.code)
-          .then(data => ({ code: s.code, data }))
-          .catch(() => ({ code: s.code, data: null }))
-      );
+      const requests = [];
+      LINES.forEach(line => {
+        line.stations.forEach(st => {
+          const key = `${line.code}-${st.code}`;
+          requests.push(
+            fetchStation(line.code, st.code)
+              .then(data => ({ key, data }))
+              .catch(() => ({ key, data: null }))
+          );
+        });
+      });
 
       const results = await Promise.all(requests);
-      const byCode = new Map(results.map(r => [r.code, r.data]));
+      const byKey = new Map(results.map(r => [r.key, r.data]));
       const now = new Date();
       const timeStr = now.toLocaleTimeString("zh-HK", { hour12: false });
 
       cards.forEach(card => {
+        const line = card.dataset.line;
         const code = card.dataset.code;
-        const data = byCode.get(code);
-        const entry = data?.data?.[`EAL-${code}`];
+        const data = byKey.get(`${line}-${code}`);
+        const entry = data?.data?.[`${line}-${code}`];
         const downList = card.querySelector('[data-dir="DOWN"] .train-list');
         const upList = card.querySelector('[data-dir="UP"] .train-list');
         const downTrains = (entry?.DOWN || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
