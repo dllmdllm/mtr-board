@@ -350,7 +350,6 @@
           <div class="station-title">
             <div class="station-name">${station.name}</div>
           </div>
-          <div class="drag-handle" title="拖拉排序">⋮⋮</div>
         </div>
         <div class="card-body">
           <div class="dir-col" data-dir="DOWN">
@@ -365,14 +364,12 @@
     }
 
     function renderBoard() {
-      const order = getSavedOrder();
       board.innerHTML = "";
-      orderedStations(order).forEach((s, idx) => {
+      STATIONS.forEach((s, idx) => {
         const card = makeCard(s);
         card.style.animationDelay = `${idx * 0.02}s`;
         board.appendChild(card);
       });
-      enableDrag();
     }
 
     function trainRow(train) {
@@ -445,43 +442,6 @@
       });
 
       lastUpdate.textContent = `更新：${timeStr}`;
-    }
-
-    function enableDrag() {
-      let dragging = null;
-
-      board.addEventListener("pointerdown", (event) => {
-        const handle = event.target.closest(".drag-handle");
-        if (!handle) return;
-        const card = handle.closest(".station-card");
-        if (!card) return;
-
-        dragging = card;
-        dragging.classList.add("dragging");
-        dragging.setPointerCapture(event.pointerId);
-      });
-
-      board.addEventListener("pointermove", (event) => {
-        if (!dragging) return;
-        const target = document.elementFromPoint(event.clientX, event.clientY);
-        const over = target?.closest(".station-card");
-        if (!over || over === dragging || over.parentElement !== board) return;
-
-        const rect = over.getBoundingClientRect();
-        const shouldInsertAfter = event.clientY > rect.top + rect.height / 2;
-        board.insertBefore(dragging, shouldInsertAfter ? over.nextSibling : over);
-      });
-
-      function stopDrag(event) {
-        if (!dragging) return;
-        dragging.classList.remove("dragging");
-        dragging.releasePointerCapture(event.pointerId);
-        dragging = null;
-        saveOrder();
-      }
-
-      board.addEventListener("pointerup", stopDrag);
-      board.addEventListener("pointercancel", stopDrag);
     }
 
     refreshBtn.addEventListener("click", refreshAll);
