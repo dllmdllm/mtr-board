@@ -568,6 +568,12 @@
         const entry = data?.data?.[`EAL-${code}`];
         const downList = card.querySelector('[data-dir="DOWN"] .train-list');
         const upList = card.querySelector('[data-dir="UP"] .train-list');
+        if (!data || !entry) {
+          card.style.display = "";
+          fillList(downList, [], "服務更新中", code, "DOWN");
+          fillList(upList, [], "服務更新中", code, "UP");
+          return;
+        }
         const downTrains = (entry?.DOWN || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
         const upTrains = (entry?.UP || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
         const hasAnyTrain = downTrains.length > 0 || upTrains.length > 0;
