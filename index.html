@@ -432,9 +432,9 @@
         const entry = data?.data?.[`EAL-${code}`];
         const downList = card.querySelector('[data-dir="DOWN"] .train-list');
         const upList = card.querySelector('[data-dir="UP"] .train-list');
-        const downTrains = entry?.DOWN || [];
-        const upTrains = entry?.UP || [];
-        const hasAnyTrain = (downTrains && downTrains.length > 0) || (upTrains && upTrains.length > 0);
+        const downTrains = (entry?.DOWN || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
+        const upTrains = (entry?.UP || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
+        const hasAnyTrain = downTrains.length > 0 || upTrains.length > 0;
 
         card.style.display = hasAnyTrain ? "" : "none";
         if (!hasAnyTrain) return;
