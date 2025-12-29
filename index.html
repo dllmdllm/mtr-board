@@ -743,11 +743,12 @@
       const now = new Date();
       const timeStr = now.toLocaleTimeString("zh-HK", { hour12: false });
 
+      const changes = [];
       cards.forEach(card => {
         const line = card.dataset.line || "EAL";
         const code = card.dataset.code;
         if (line !== activeLine) {
-          card.style.display = "none";
+          changes.push({ card, display: "none" });
           return;
         }
         const data = byKey.get(`${line}-${code}`);
@@ -755,7 +756,7 @@
         const downList = card.querySelector('[data-dir="DOWN"] .train-list');
         const upList = card.querySelector('[data-dir="UP"] .train-list');
         if (!data || !entry) {
-          card.style.display = "";
+          changes.push({ card, display: "" });
           fillList(downList, [], "更新中", code, "DOWN");
           fillList(upList, [], "更新中", code, "UP");
           return;
@@ -766,18 +767,22 @@
 
         if (!hasAnyTrain) {
           if (line === "EAL" && code === "RAC") {
-            card.style.display = "none";
+            changes.push({ card, display: "none" });
             return;
           }
-          card.style.display = "";
+          changes.push({ card, display: "" });
           fillList(downList, [], "暫無班次", code, "DOWN");
           fillList(upList, [], "暫無班次", code, "UP");
           return;
         }
 
-        card.style.display = "";
+        changes.push({ card, display: "" });
         fillList(downList, downTrains, "", code, "DOWN");
         fillList(upList, upTrains, "", code, "UP");
+      });
+
+      changes.forEach(({ card, display }) => {
+        card.style.display = display;
       });
 
       lastUpdate.textContent = timeStr;
