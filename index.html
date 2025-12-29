@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="zh-HK">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MTR EAL Next Train Board</title>
+  <style>
+    :root {
+      --bg-1: #0c1b2a;
+      --bg-2: #14283b;
+      --bg-3: #103a2d;
+      --card: rgba(255, 255, 255, 0.08);
+      --card-strong: rgba(255, 255, 255, 0.12);
+      --text: #f3f7fb;
+      --muted: #b8c5d3;
+      --accent: #ffb703;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(1200px 600px at 10% -10%, #264f7a 0%, transparent 60%),
+                  radial-gradient(800px 500px at 90% 0%, #1a6f50 0%, transparent 55%),
+                  linear-gradient(135deg, var(--bg-1), var(--bg-2) 55%, var(--bg-3));
+      color: var(--text);
+      font-family: "Space Grotesk", "Segoe UI", system-ui, -apple-system, sans-serif;
+      min-height: 100%;
+    }
+
+    body {
+      padding: 28px 18px 40px;
+    }
+
+    .shell {
+      max-width: 1100px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .glow {
+      position: absolute;
+      inset: -80px -40px auto -40px;
+      height: 220px;
+      background: linear-gradient(120deg, rgba(255, 183, 3, 0.2), rgba(6, 214, 160, 0.15));
+      filter: blur(60px);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    header {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .title {
+      font-family: "Fraunces", "Times New Roman", serif;
+      font-size: clamp(28px, 4vw, 42px);
+      letter-spacing: 0.5px;
+      margin: 0;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .btn {
+      background: var(--accent);
+      color: #1d1604;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+
+    .btn:active { transform: translateY(1px); }
+
+    .board {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 16px;
+    }
+
+    .station-card {
+      background: var(--card);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 16px 18px;
+      display: grid;
+      gap: 12px;
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .station-card.dragging {
+      opacity: 0.7;
+      transform: scale(0.98);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .station-title {
+      text-align: center;
+    }
+
+    .station-name {
+      font-family: "Fraunces", "Times New Roman", serif;
+      font-weight: 700;
+      font-size: 20px;
+    }
+
+
+    .drag-handle {
+      font-size: 16px;
+      color: var(--muted);
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .card-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .dir-col {
+      display: grid;
+      gap: 8px;
+    }
+
+
+    .train-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .train-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 15px;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
+      padding-bottom: 4px;
+    }
+
+    .train-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .train-dest {
+      font-weight: 600;
+    }
+
+    .train-mins {
+      color: var(--muted);
+    }
+
+    .fade-in {
+      animation: rise 0.45s ease both;
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 760px) {
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .card-body {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="glow"></div>
+    <header>
+      <div>
+        <h1 class="title">MTR EAL 下一班</h1>
+        <div class="meta">
+          <span class="pill">East Rail Line</span>
+          <span id="last-update" class="pill">更新中...</span>
+        </div>
+      </div>
+      <div class="meta">
+        <span class="pill">自動更新：30s</span>
+        <button id="refresh" class="btn">即時刷新</button>
+      </div>
+    </header>
+
+    <section id="board" class="board"></section>
+  </div>
+
+  <script>
+    const STATIONS = [
+      { code: "ADM", name: "金鐘" },
+      { code: "EXC", name: "會展" },
+      { code: "HUH", name: "紅磡" },
+      { code: "MKK", name: "旺角東" },
+      { code: "KOT", name: "九龍塘" },
+      { code: "TAW", name: "大圍" },
+      { code: "SHT", name: "沙田" },
+      { code: "FOT", name: "火炭" },
+      { code: "RAC", name: "馬場" },
+      { code: "UNI", name: "大學" },
+      { code: "TAP", name: "大埔墟" },
+      { code: "TWO", name: "太和" },
+      { code: "FAN", name: "粉嶺" },
+      { code: "SHS", name: "上水" },
+      { code: "LOW", name: "羅湖" },
+      { code: "LMC", name: "落馬洲" }
+    ];
+
+    const CODE_TO_NAME = new Map(STATIONS.map(s => [s.code, s.name]));
+
+    const API_BASE = "https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php";
+    const ORDER_KEY = "ealOrder";
+
+    const board = document.getElementById("board");
+    const lastUpdate = document.getElementById("last-update");
+    const refreshBtn = document.getElementById("refresh");
+
+    function getSavedOrder() {
+      try {
+        const raw = localStorage.getItem(ORDER_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return null;
+        return parsed;
+      } catch {
+        return null;
+      }
+    }
+
+    function saveOrder() {
+      const codes = Array.from(board.querySelectorAll(".station-card"))
+        .map(card => card.dataset.code);
+      localStorage.setItem(ORDER_KEY, JSON.stringify(codes));
+    }
+
+    function orderedStations(order) {
+      if (!order) return STATIONS.slice();
+      const map = new Map(STATIONS.map(s => [s.code, s]));
+      const list = [];
+      for (const code of order) {
+        if (map.has(code)) list.push(map.get(code));
+      }
+      for (const s of STATIONS) {
+        if (!order.includes(s.code)) list.push(s);
+      }
+      return list;
+    }
+
+    function makeCard(station) {
+      const card = document.createElement("div");
+      card.className = "station-card fade-in";
+      card.dataset.code = station.code;
+
+      card.innerHTML = `
+        <div class="card-head">
+          <div class="station-title">
+            <div class="station-name">${station.name}</div>
+          </div>
+          <div class="drag-handle" title="拖拉排序">⋮⋮</div>
+        </div>
+        <div class="card-body">
+          <div class="dir-col" data-dir="DOWN">
+            <div class="train-list"></div>
+          </div>
+          <div class="dir-col" data-dir="UP">
+            <div class="train-list"></div>
+          </div>
+        </div>
+      `;
+      return card;
+    }
+
+    function renderBoard() {
+      const order = getSavedOrder();
+      board.innerHTML = "";
+      orderedStations(order).forEach((s, idx) => {
+        const card = makeCard(s);
+        card.style.animationDelay = `${idx * 0.02}s`;
+        board.appendChild(card);
+      });
+      enableDrag();
+    }
+
+    function trainRow(train) {
+      const row = document.createElement("div");
+      row.className = "train-row";
+      if (!train) {
+        row.innerHTML = `<span class="train-dest">--</span><span class="train-mins">--</span>`;
+        return row;
+      }
+      const destName = CODE_TO_NAME.get(train.dest) || train.dest || "--";
+      const mins = train.ttnt ?? "--";
+      const plat = train.plat ?? "--";
+      const time = train.time ?? "--";
+      row.title = `月台 ${plat} | 到站 ${time}`;
+      row.innerHTML = `
+        <span class="train-dest">${destName}</span>
+        <span class="train-mins">${mins} 分鐘</span>
+      `;
+      return row;
+    }
+
+    function fillList(listEl, trains) {
+      listEl.innerHTML = "";
+      if (!Array.isArray(trains) || trains.length === 0) {
+        listEl.appendChild(trainRow(null));
+        return;
+      }
+      trains.slice(0, 4).forEach(train => listEl.appendChild(trainRow(train)));
+    }
+
+    async function fetchStation(code) {
+      const url = `${API_BASE}?line=EAL&sta=${code}&lang=TC`;
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
+    async function refreshAll() {
+      const cards = Array.from(document.querySelectorAll(".station-card"));
+      lastUpdate.textContent = "更新中...";
+
+      const requests = STATIONS.map(s =>
+        fetchStation(s.code)
+          .then(data => ({ code: s.code, data }))
+          .catch(() => ({ code: s.code, data: null }))
+      );
+
+      const results = await Promise.all(requests);
+      const byCode = new Map(results.map(r => [r.code, r.data]));
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString("zh-HK", { hour12: false });
+
+      cards.forEach(card => {
+        const code = card.dataset.code;
+        const data = byCode.get(code);
+        const entry = data?.data?.[`EAL-${code}`];
+        const downList = card.querySelector('[data-dir="DOWN"] .train-list');
+        const upList = card.querySelector('[data-dir="UP"] .train-list');
+
+        fillList(downList, entry?.DOWN || []);
+        fillList(upList, entry?.UP || []);
+      });
+
+      lastUpdate.textContent = `更新：${timeStr}`;
+    }
+
+    function enableDrag() {
+      let dragging = null;
+
+      board.addEventListener("pointerdown", (event) => {
+        const handle = event.target.closest(".drag-handle");
+        if (!handle) return;
+        const card = handle.closest(".station-card");
+        if (!card) return;
+
+        dragging = card;
+        dragging.classList.add("dragging");
+        dragging.setPointerCapture(event.pointerId);
+      });
+
+      board.addEventListener("pointermove", (event) => {
+        if (!dragging) return;
+        const target = document.elementFromPoint(event.clientX, event.clientY);
+        const over = target?.closest(".station-card");
+        if (!over || over === dragging || over.parentElement !== board) return;
+
+        const rect = over.getBoundingClientRect();
+        const shouldInsertAfter = event.clientY > rect.top + rect.height / 2;
+        board.insertBefore(dragging, shouldInsertAfter ? over.nextSibling : over);
+      });
+
+      function stopDrag(event) {
+        if (!dragging) return;
+        dragging.classList.remove("dragging");
+        dragging.releasePointerCapture(event.pointerId);
+        dragging = null;
+        saveOrder();
+      }
+
+      board.addEventListener("pointerup", stopDrag);
+      board.addEventListener("pointercancel", stopDrag);
+    }
+
+    refreshBtn.addEventListener("click", refreshAll);
+
+    renderBoard();
+    refreshAll();
+    setInterval(refreshAll, 30000);
+  </script>
+</body>
+</html>
