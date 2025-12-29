@@ -412,7 +412,23 @@
       { line: "KTL", code: "KWT", name: "觀塘" },
       { line: "KTL", code: "LAT", name: "藍田" },
       { line: "KTL", code: "YAT", name: "油塘" },
-      { line: "KTL", code: "TIK", name: "調景嶺" }
+      { line: "KTL", code: "TIK", name: "調景嶺" },
+      { line: "TWL", code: "CEN", name: "中環" },
+      { line: "TWL", code: "ADM", name: "金鐘" },
+      { line: "TWL", code: "TST", name: "尖沙咀" },
+      { line: "TWL", code: "JOR", name: "佐敦" },
+      { line: "TWL", code: "YMT", name: "油麻地" },
+      { line: "TWL", code: "MOK", name: "旺角" },
+      { line: "TWL", code: "PRE", name: "太子" },
+      { line: "TWL", code: "SSP", name: "深水埗" },
+      { line: "TWL", code: "CSW", name: "長沙灣" },
+      { line: "TWL", code: "LCK", name: "茘枝角" },
+      { line: "TWL", code: "MEF", name: "美孚" },
+      { line: "TWL", code: "LAK", name: "茘景" },
+      { line: "TWL", code: "KWF", name: "葵芳" },
+      { line: "TWL", code: "KWH", name: "葵興" },
+      { line: "TWL", code: "TWH", name: "大窩口" },
+      { line: "TWL", code: "TSW", name: "荃灣" }
     ];
 
     const CODE_TO_NAME = new Map(STATIONS.map(s => [s.code, s.name]));
@@ -425,7 +441,8 @@
     const GRACE_AFTER_ZERO = 8;
     const LINE_COLORS = {
       EAL: "#53B7E8",
-      KTL: "#00A551"
+      KTL: "#00A551",
+      TWL: "#E60012"
     };
 
     const board = document.getElementById("board");
