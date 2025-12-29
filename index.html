@@ -15,6 +15,7 @@
       --muted: #b8c5d3;
       --accent: #ffb703;
       --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      --line-color: #53b7e8;
     }
 
     * { box-sizing: border-box; }
@@ -105,8 +106,8 @@
     }
 
     .station-card {
-      background: var(--card);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: linear-gradient(145deg, rgba(83, 183, 232, 0.22), rgba(255, 255, 255, 0.06));
+      border: 1px solid rgba(83, 183, 232, 0.45);
       border-radius: 16px;
       padding: 16px 18px;
       display: grid;
@@ -179,6 +180,28 @@
       padding-bottom: 0;
     }
 
+    .toggle-group {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+    }
+
+    .toggle-btn {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      padding: 8px 14px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .toggle-btn.active {
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff;
+    }
+
     .train-dest {
       font-weight: 600;
     }
@@ -215,12 +238,16 @@
       <div>
         <h1 class="title">MTR EAL 下一班</h1>
         <div class="meta">
-          <span class="pill">East Rail Line</span>
           <span id="last-update" class="pill">更新中...</span>
         </div>
       </div>
       <div class="meta">
-        <span class="pill">自動更新：30s</span>
+        <span class="pill">自動更新：30s · 倒數 <span id="countdown">30</span>s</span>
+        <span class="toggle-group">
+          <button class="toggle-btn" data-count="1">最近 1 班</button>
+          <button class="toggle-btn" data-count="2">最近 2 班</button>
+          <button class="toggle-btn active" data-count="4">最近 4 班</button>
+        </span>
         <button id="refresh" class="btn">即時刷新</button>
       </div>
     </header>
@@ -252,10 +279,15 @@
 
     const API_BASE = "https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php";
     const ORDER_KEY = "ealOrder";
+    const REFRESH_SECONDS = 30;
 
     const board = document.getElementById("board");
     const lastUpdate = document.getElementById("last-update");
     const refreshBtn = document.getElementById("refresh");
+    const countdownEl = document.getElementById("countdown");
+    const toggleButtons = Array.from(document.querySelectorAll(".toggle-btn"));
+    let visibleCount = 4;
+    let remaining = REFRESH_SECONDS;
 
     function getSavedOrder() {
       try {
@@ -348,7 +380,7 @@
         listEl.appendChild(trainRow(null));
         return;
       }
-      trains.slice(0, 4).forEach(train => listEl.appendChild(trainRow(train)));
+      trains.slice(0, visibleCount).forEach(train => listEl.appendChild(trainRow(train)));
     }
 
     async function fetchStation(code) {
@@ -361,6 +393,8 @@
     async function refreshAll() {
       const cards = Array.from(document.querySelectorAll(".station-card"));
       lastUpdate.textContent = "更新中...";
+      remaining = REFRESH_SECONDS;
+      countdownEl.textContent = remaining;
 
       const requests = STATIONS.map(s =>
         fetchStation(s.code)
@@ -425,10 +459,26 @@
     }
 
     refreshBtn.addEventListener("click", refreshAll);
+    toggleButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const count = Number(btn.dataset.count);
+        visibleCount = Number.isNaN(count) ? 1 : count;
+        toggleButtons.forEach(b => b.classList.toggle("active", b === btn));
+        refreshAll();
+      });
+    });
+
+    function tickCountdown() {
+      remaining = Math.max(0, remaining - 1);
+      countdownEl.textContent = remaining;
+      if (remaining === 0) {
+        refreshAll();
+      }
+    }
 
     renderBoard();
     refreshAll();
-    setInterval(refreshAll, 30000);
+    setInterval(tickCountdown, 1000);
   </script>
 </body>
 </html>
