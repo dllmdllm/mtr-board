@@ -260,6 +260,18 @@
       white-space: nowrap;
     }
 
+    .train-right {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .train-hint {
+      font-size: 11px;
+      opacity: 0.7;
+    }
+
     .plat-num {
       font-size: 12px;
       font-weight: 700;
@@ -354,6 +366,10 @@
 
     const API_BASE = "https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php";
     const REFRESH_SECONDS = 30;
+    const NORMAL_DIFF = 10;
+    const MEDIUM_DIFF = 45;
+    const MAX_SLEW = 2;
+    const GRACE_AFTER_ZERO = 8;
     const LINE_COLOR = "#53B7E8";
 
     const board = document.getElementById("board");
@@ -363,6 +379,7 @@
     const toggleButtons = Array.from(document.querySelectorAll(".toggle-btn"));
     let visibleCount = 4;
     let remaining = REFRESH_SECONDS;
+    const rowState = new Map();
 
     function hexToRgb(hex) {
       const cleaned = hex.replace("#", "");
@@ -414,11 +431,47 @@
       return colors[(Math.abs(num) - 1) % colors.length];
     }
 
-    function trainRow(train, isHighlight) {
+    function statusRow(text) {
+      const row = document.createElement("div");
+      row.className = "train-row";
+      row.dataset.status = "status";
+      row.innerHTML = `
+        <span class="train-dest">${text}</span>
+        <span class="train-right"><span class="train-mins"></span><span class="train-hint"></span></span>
+      `;
+      return row;
+    }
+
+    function parseTimeToMs(value) {
+      if (!value || value === "-") return NaN;
+      const iso = value.replace(" ", "T");
+      const ms = Date.parse(iso);
+      return Number.isNaN(ms) ? NaN : ms;
+    }
+
+    function computeTargetMs(train) {
+      const byTime = parseTimeToMs(train.time);
+      if (!Number.isNaN(byTime)) return byTime;
+      const ttnt = Number(train.ttnt);
+      if (!Number.isNaN(ttnt)) return Date.now() + ttnt * 60 * 1000;
+      return NaN;
+    }
+
+    function formatCountdown(sec) {
+      if (sec <= -GRACE_AFTER_ZERO) return "已開出";
+      if (sec <= 59) return "即將到站";
+      const mins = Math.ceil(sec / 60);
+      return `${mins} 分`;
+    }
+
+    function trainRow(train, isHighlight, key) {
       const row = document.createElement("div");
       row.className = isHighlight ? "train-row highlight" : "train-row";
       if (!train) {
-        row.innerHTML = `<span class="train-dest">--</span><span class="train-mins">--</span>`;
+        row.innerHTML = `
+          <span class="train-dest">--</span>
+          <span class="train-right"><span class="train-mins">--</span><span class="train-hint"></span></span>
+        `;
         return row;
       }
       const destName = CODE_TO_NAME.get(train.dest) || train.dest || "--";
@@ -429,23 +482,60 @@
         const color = colorForPlat(plat);
         if (color) row.style.color = color;
       }
+      row.dataset.key = key;
+      const targetMs = computeTargetMs(train);
+      if (!Number.isNaN(targetMs)) row.dataset.target = String(targetMs);
       row.title = `P${plat} | 到站 ${time}`;
       row.innerHTML = `
         <span class="train-dest"><span class="plat-num">${plat}</span>${destName}</span>
-        <span class="train-mins">${mins} 分</span>
+        <span class="train-right"><span class="train-mins">${mins} 分</span><span class="train-hint"></span></span>
       `;
       return row;
     }
 
-    function fillList(listEl, trains) {
+    function fillList(listEl, trains, statusText, stationCode, direction) {
       listEl.innerHTML = "";
       if (!Array.isArray(trains) || trains.length === 0) {
-        listEl.appendChild(trainRow(null, false));
+        listEl.appendChild(statusRow(statusText || "暫無班次"));
         return;
       }
       trains.slice(0, visibleCount).forEach((train, idx) => {
-        listEl.appendChild(trainRow(train, idx === 0));
+        const key = `${stationCode}-${direction}-${idx}`;
+        listEl.appendChild(trainRow(train, idx === 0, key));
       });
+    }
+
+    function updateRowCountdown(row) {
+      if (row.dataset.status) return;
+      const targetMs = Number(row.dataset.target);
+      if (!targetMs) return;
+      const remainingSec = Math.floor((targetMs - Date.now()) / 1000);
+      const key = row.dataset.key || "";
+      const state = rowState.get(key) || { displaySec: remainingSec, delayHint: false };
+      let displaySec = state.displaySec;
+      if (Number.isNaN(displaySec)) displaySec = remainingSec;
+      const diff = remainingSec - displaySec;
+      if (diff > NORMAL_DIFF) {
+        state.delayHint = diff > MEDIUM_DIFF;
+        displaySec = displaySec + Math.min(MAX_SLEW, diff);
+      } else if (diff < -MAX_SLEW) {
+        displaySec = displaySec + Math.max(-MAX_SLEW, diff);
+        state.delayHint = false;
+      } else {
+        displaySec = remainingSec;
+        state.delayHint = false;
+      }
+      state.displaySec = displaySec;
+      rowState.set(key, state);
+
+      const minsEl = row.querySelector(".train-mins");
+      const hintEl = row.querySelector(".train-hint");
+      if (minsEl) minsEl.textContent = formatCountdown(displaySec);
+      if (hintEl) hintEl.textContent = state.delayHint ? "可能延誤" : "";
+    }
+
+    function updateAllRows() {
+      document.querySelectorAll(".station-card .train-row").forEach(updateRowCountdown);
     }
 
     async function fetchStation(code) {
@@ -485,11 +575,12 @@
         card.style.display = hasAnyTrain ? "" : "none";
         if (!hasAnyTrain) return;
 
-        fillList(downList, downTrains);
-        fillList(upList, upTrains);
+        fillList(downList, downTrains, "", code, "DOWN");
+        fillList(upList, upTrains, "", code, "UP");
       });
 
       lastUpdate.textContent = `更新：${timeStr}`;
+      updateAllRows();
     }
 
     refreshBtn.addEventListener("click", refreshAll);
@@ -505,6 +596,7 @@
     function tickCountdown() {
       remaining = Math.max(0, remaining - 1);
       countdownEl.textContent = remaining;
+      updateAllRows();
       if (remaining === 0) {
         refreshAll();
       }
