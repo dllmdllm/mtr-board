@@ -458,7 +458,7 @@
     }
 
     function formatCountdown(sec) {
-      if (sec <= -GRACE_AFTER_ZERO) return "已開出";
+      if (sec <= -GRACE_AFTER_ZERO) return "已開";
       if (sec <= 59) return "就到站";
       const mins = Math.ceil(sec / 60);
       return `${mins} 分`;
@@ -533,7 +533,7 @@
       const label = formatCountdown(displaySec);
       if (minsEl) minsEl.textContent = label;
       if (hintEl) {
-        const suppressHint = label === "即將到站" || label === "已開出";
+        const suppressHint = label === "就到站" || label === "已開";
         hintEl.textContent = !suppressHint && state.delayHint ? "可能延誤" : "";
       }
     }
