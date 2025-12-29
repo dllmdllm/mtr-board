@@ -344,22 +344,39 @@
 
   <script>
     const STATIONS = [
-      { code: "ADM", name: "金鐘" },
-      { code: "EXC", name: "會展" },
-      { code: "HUH", name: "紅磡" },
-      { code: "MKK", name: "旺角東" },
-      { code: "KOT", name: "九龍塘" },
-      { code: "TAW", name: "大圍" },
-      { code: "SHT", name: "沙田" },
-      { code: "FOT", name: "火炭" },
-      { code: "RAC", name: "馬場" },
-      { code: "UNI", name: "大學" },
-      { code: "TAP", name: "大埔墟" },
-      { code: "TWO", name: "太和" },
-      { code: "FAN", name: "粉嶺" },
-      { code: "SHS", name: "上水" },
-      { code: "LOW", name: "羅湖" },
-      { code: "LMC", name: "落馬洲" }
+      { line: "EAL", code: "ADM", name: "金鐘" },
+      { line: "EAL", code: "EXC", name: "會展" },
+      { line: "EAL", code: "HUH", name: "紅磡" },
+      { line: "EAL", code: "MKK", name: "旺角東" },
+      { line: "EAL", code: "KOT", name: "九龍塘" },
+      { line: "EAL", code: "TAW", name: "大圍" },
+      { line: "EAL", code: "SHT", name: "沙田" },
+      { line: "EAL", code: "FOT", name: "火炭" },
+      { line: "EAL", code: "RAC", name: "馬場" },
+      { line: "EAL", code: "UNI", name: "大學" },
+      { line: "EAL", code: "TAP", name: "大埔墟" },
+      { line: "EAL", code: "TWO", name: "太和" },
+      { line: "EAL", code: "FAN", name: "粉嶺" },
+      { line: "EAL", code: "SHS", name: "上水" },
+      { line: "EAL", code: "LOW", name: "羅湖" },
+      { line: "EAL", code: "LMC", name: "落馬洲" },
+      { line: "KTL", code: "WHA", name: "黃埔" },
+      { line: "KTL", code: "HOM", name: "何文田" },
+      { line: "KTL", code: "YMT", name: "油麻地" },
+      { line: "KTL", code: "MOK", name: "旺角" },
+      { line: "KTL", code: "PRE", name: "太子" },
+      { line: "KTL", code: "SKM", name: "石硤尾" },
+      { line: "KTL", code: "KOT", name: "九龍塘" },
+      { line: "KTL", code: "LOF", name: "樂富" },
+      { line: "KTL", code: "WTS", name: "黃大仙" },
+      { line: "KTL", code: "DIH", name: "鑽石山" },
+      { line: "KTL", code: "CHH", name: "彩虹" },
+      { line: "KTL", code: "KOB", name: "九龍灣" },
+      { line: "KTL", code: "NTK", name: "牛頭角" },
+      { line: "KTL", code: "KWT", name: "觀塘" },
+      { line: "KTL", code: "LAT", name: "藍田" },
+      { line: "KTL", code: "YAT", name: "油塘" },
+      { line: "KTL", code: "TIK", name: "調景嶺" }
     ];
 
     const CODE_TO_NAME = new Map(STATIONS.map(s => [s.code, s.name]));
@@ -370,7 +387,10 @@
     const MEDIUM_DIFF = 45;
     const MAX_SLEW = 2;
     const GRACE_AFTER_ZERO = 8;
-    const LINE_COLOR = "#53B7E8";
+    const LINE_COLORS = {
+      EAL: "#53B7E8",
+      KTL: "#00A551"
+    };
 
     const board = document.getElementById("board");
     const lastUpdate = document.getElementById("last-update");
@@ -394,8 +414,10 @@
       const card = document.createElement("div");
       card.className = "station-card fade-in";
       card.dataset.code = station.code;
-      card.style.setProperty("--line-color", LINE_COLOR);
-      card.style.setProperty("--line-color-rgb", hexToRgb(LINE_COLOR));
+      card.dataset.line = station.line;
+      const lineColor = LINE_COLORS[station.line] || "#53B7E8";
+      card.style.setProperty("--line-color", lineColor);
+      card.style.setProperty("--line-color-rgb", hexToRgb(lineColor));
 
       card.innerHTML = `
         <div class="card-head">
@@ -542,8 +564,8 @@
       document.querySelectorAll(".station-card .train-row").forEach(updateRowCountdown);
     }
 
-    async function fetchStation(code) {
-      const url = `${API_BASE}?line=EAL&sta=${code}&lang=TC`;
+    async function fetchStation(line, code) {
+      const url = `${API_BASE}?line=${line}&sta=${code}&lang=TC`;
       const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
@@ -556,20 +578,21 @@
       countdownEl.textContent = remaining;
 
       const requests = STATIONS.map(s =>
-        fetchStation(s.code)
-          .then(data => ({ code: s.code, data }))
-          .catch(() => ({ code: s.code, data: null }))
+        fetchStation(s.line, s.code)
+          .then(data => ({ key: `${s.line}-${s.code}`, data }))
+          .catch(() => ({ key: `${s.line}-${s.code}`, data: null }))
       );
 
       const results = await Promise.all(requests);
-      const byCode = new Map(results.map(r => [r.code, r.data]));
+      const byKey = new Map(results.map(r => [r.key, r.data]));
       const now = new Date();
       const timeStr = now.toLocaleTimeString("zh-HK", { hour12: false });
 
       cards.forEach(card => {
+        const line = card.dataset.line || "EAL";
         const code = card.dataset.code;
-        const data = byCode.get(code);
-        const entry = data?.data?.[`EAL-${code}`];
+        const data = byKey.get(`${line}-${code}`);
+        const entry = data?.data?.[`${line}-${code}`];
         const downList = card.querySelector('[data-dir="DOWN"] .train-list');
         const upList = card.querySelector('[data-dir="UP"] .train-list');
         if (!data || !entry) {
@@ -583,7 +606,7 @@
         const hasAnyTrain = downTrains.length > 0 || upTrains.length > 0;
 
         if (!hasAnyTrain) {
-          if (code === "RAC") {
+          if (line === "EAL" && code === "RAC") {
             card.style.display = "none";
             return;
           }
