@@ -219,6 +219,10 @@
       padding-bottom: 2px;
     }
 
+    .train-row.highlight {
+      color: #ffd166;
+    }
+
     .train-row:last-child {
       border-bottom: none;
       padding-bottom: 0;
@@ -383,9 +387,9 @@
       });
     }
 
-    function trainRow(train) {
+    function trainRow(train, isHighlight) {
       const row = document.createElement("div");
-      row.className = "train-row";
+      row.className = isHighlight ? "train-row highlight" : "train-row";
       if (!train) {
         row.innerHTML = `<span class="train-dest">--</span><span class="train-mins">--</span>`;
         return row;
@@ -405,10 +409,12 @@
     function fillList(listEl, trains) {
       listEl.innerHTML = "";
       if (!Array.isArray(trains) || trains.length === 0) {
-        listEl.appendChild(trainRow(null));
+        listEl.appendChild(trainRow(null, false));
         return;
       }
-      trains.slice(0, visibleCount).forEach(train => listEl.appendChild(trainRow(train)));
+      trains.slice(0, visibleCount).forEach((train, idx) => {
+        listEl.appendChild(trainRow(train, idx === 0));
+      });
     }
 
     async function fetchStation(code) {
