@@ -432,9 +432,15 @@
         const entry = data?.data?.[`EAL-${code}`];
         const downList = card.querySelector('[data-dir="DOWN"] .train-list');
         const upList = card.querySelector('[data-dir="UP"] .train-list');
+        const downTrains = entry?.DOWN || [];
+        const upTrains = entry?.UP || [];
+        const hasAnyTrain = (downTrains && downTrains.length > 0) || (upTrains && upTrains.length > 0);
 
-        fillList(downList, entry?.DOWN || []);
-        fillList(upList, entry?.UP || []);
+        card.style.display = hasAnyTrain ? "" : "none";
+        if (!hasAnyTrain) return;
+
+        fillList(downList, downTrains);
+        fillList(upList, upTrains);
       });
 
       lastUpdate.textContent = `更新：${timeStr}`;
