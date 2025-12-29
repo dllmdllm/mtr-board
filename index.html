@@ -330,7 +330,6 @@
     const CODE_TO_NAME = new Map(STATIONS.map(s => [s.code, s.name]));
 
     const API_BASE = "https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php";
-    const ORDER_KEY = "ealOrder";
     const REFRESH_SECONDS = 30;
 
     const board = document.getElementById("board");
@@ -340,37 +339,6 @@
     const toggleButtons = Array.from(document.querySelectorAll(".toggle-btn"));
     let visibleCount = 4;
     let remaining = REFRESH_SECONDS;
-
-    function getSavedOrder() {
-      try {
-        const raw = localStorage.getItem(ORDER_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return null;
-        return parsed;
-      } catch {
-        return null;
-      }
-    }
-
-    function saveOrder() {
-      const codes = Array.from(board.querySelectorAll(".station-card"))
-        .map(card => card.dataset.code);
-      localStorage.setItem(ORDER_KEY, JSON.stringify(codes));
-    }
-
-    function orderedStations(order) {
-      if (!order) return STATIONS.slice();
-      const map = new Map(STATIONS.map(s => [s.code, s]));
-      const list = [];
-      for (const code of order) {
-        if (map.has(code)) list.push(map.get(code));
-      }
-      for (const s of STATIONS) {
-        if (!order.includes(s.code)) list.push(s);
-      }
-      return list;
-    }
 
     function makeCard(station) {
       const card = document.createElement("div");
