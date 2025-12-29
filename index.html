@@ -211,7 +211,7 @@
 
     .train-row {
       display: grid;
-      grid-template-columns: auto 1fr auto;
+      grid-template-columns: 1fr auto;
       align-items: center;
       font-size: 14px;
       column-gap: 8px;
@@ -262,8 +262,6 @@
       font-size: 12px;
       font-weight: 700;
       color: #ffd166;
-      min-width: 10px;
-      margin-right: 2px;
     }
 
     .fade-in {
@@ -408,8 +406,7 @@
       const time = train.time ?? "--";
       row.title = `P${plat} | 到站 ${time}`;
       row.innerHTML = `
-        <span class="plat-num">${plat}</span>
-        <span class="train-dest">${destName}</span>
+        <span class="train-dest"><span class="plat-num">${plat}</span>${destName}</span>
         <span class="train-mins">${mins} 分</span>
       `;
       return row;
