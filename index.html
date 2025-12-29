@@ -459,7 +459,7 @@
 
     function formatCountdown(sec) {
       if (sec <= -GRACE_AFTER_ZERO) return "已開";
-      if (sec <= 59) return "就到站";
+      if (sec <= 59) return "就到";
       const mins = Math.ceil(sec / 60);
       return `${mins} 分`;
     }
