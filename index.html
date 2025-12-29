@@ -210,11 +210,11 @@
     }
 
     .train-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      align-items: center;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
       font-size: 14px;
-      column-gap: 8px;
+      gap: 4px;
       border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
       padding-bottom: 2px;
     }
@@ -257,6 +257,7 @@
     .train-mins {
       color: inherit;
       opacity: 0.75;
+      white-space: nowrap;
     }
 
     .plat-num {
