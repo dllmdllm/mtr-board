@@ -16,6 +16,7 @@
       --accent: #ffb703;
       --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
       --line-color: #53b7e8;
+      --line-color-rgb: 83, 183, 232;
     }
 
     * { box-sizing: border-box; }
@@ -106,8 +107,12 @@
     }
 
     .station-card {
-      background: linear-gradient(145deg, rgba(83, 183, 232, 0.22), rgba(255, 255, 255, 0.06));
-      border: 1px solid rgba(83, 183, 232, 0.45);
+      background: linear-gradient(
+        180deg,
+        rgba(var(--line-color-rgb), 0.35),
+        rgba(var(--line-color-rgb), 0.12)
+      );
+      border: 1px solid rgba(var(--line-color-rgb), 0.55);
       border-radius: 16px;
       padding: 12px 14px;
       display: grid;
