@@ -1110,6 +1110,7 @@
           downCol.style.display = "";
           upCol.style.display = "";
           renderMulti();
+          downList.querySelectorAll(".train-row").forEach(row => visibleRows.push(row));
           return;
         }
 
