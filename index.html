@@ -552,6 +552,54 @@
       { line: "DRL", code: "DIS", name: "迪士尼" }
     ];
 
+    const INTERCHANGE_LINES = {
+      "中環": ["TWL", "ISL"],
+      "金鐘": ["EAL", "ISL", "TWL", "SIL"],
+      "香港": ["AEL", "TCL"],
+      "九龍": ["AEL", "TCL"],
+      "青衣": ["AEL", "TCL"],
+      "欣澳": ["TCL", "DRL"],
+      "茘景": ["TWL", "TCL"],
+      "南昌": ["TML", "TCL"],
+      "美孚": ["TML", "TWL"],
+      "太子": ["KTL", "TWL"],
+      "旺角": ["KTL", "TWL"],
+      "油麻地": ["KTL", "TWL"],
+      "九龍塘": ["EAL", "KTL"],
+      "何文田": ["TML", "KTL"],
+      "鑽石山": ["TML", "KTL"],
+      "調景嶺": ["KTL", "TKL"],
+      "油塘": ["KTL", "TKL"],
+      "北角": ["ISL", "TKL"],
+      "鰂魚涌": ["ISL", "TKL"],
+      "大圍": ["EAL", "TML"],
+      "紅磡": ["EAL", "TML"]
+    };
+
+    const INTERCHANGE_LIST = [
+      "中環",
+      "金鐘",
+      "香港",
+      "九龍",
+      "青衣",
+      "欣澳",
+      "茘景",
+      "南昌",
+      "美孚",
+      "太子",
+      "旺角",
+      "油麻地",
+      "九龍塘",
+      "何文田",
+      "鑽石山",
+      "調景嶺",
+      "油塘",
+      "北角",
+      "鰂魚涌",
+      "大圍",
+      "紅磡"
+    ];
+
     const CODE_TO_NAME = new Map(STATIONS.map(s => [s.code, s.name]));
 
     const API_BASE = "https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php";
