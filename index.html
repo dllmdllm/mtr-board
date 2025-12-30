@@ -237,13 +237,6 @@
       font-size: 16px;
     }
 
-    .station-times {
-      margin-top: 2px;
-      display: flex;
-      justify-content: space-between;
-      font-size: 10px;
-      color: var(--muted);
-    }
 
 
     .card-body {
@@ -608,10 +601,6 @@
         <div class="card-head">
           <div class="station-title">
             <div class="station-name">${station.name}</div>
-            <div class="station-times">
-              <span class="first-time">--</span>
-              <span class="last-time">--</span>
-            </div>
           </div>
         </div>
         <div class="card-body">
@@ -661,11 +650,6 @@
       return Number.isNaN(ms) ? NaN : ms;
     }
 
-    function formatClock(ms) {
-      if (!ms || Number.isNaN(ms)) return "--";
-      const dt = new Date(ms);
-      return dt.toLocaleTimeString("zh-HK", { hour12: false, hour: "2-digit", minute: "2-digit" });
-    }
 
     function computeTargetMs(train) {
       const byTime = parseTimeToMs(train.time);
@@ -675,23 +659,6 @@
       return NaN;
     }
 
-    function setCardTimes(card, trains) {
-      const firstEl = card.querySelector(".first-time");
-      const lastEl = card.querySelector(".last-time");
-      if (!firstEl || !lastEl) return;
-      const times = trains
-        .map(train => computeTargetMs(train))
-        .filter(ms => !Number.isNaN(ms));
-      if (times.length === 0) {
-        firstEl.textContent = "--";
-        lastEl.textContent = "--";
-        return;
-      }
-      const first = Math.min(...times);
-      const last = Math.max(...times);
-      firstEl.textContent = formatClock(first);
-      lastEl.textContent = formatClock(last);
-    }
 
     function formatCountdown(sec) {
       if (sec <= -GRACE_AFTER_ZERO) return "已開";
@@ -819,7 +786,6 @@
           changes.push({ card, display: "" });
           fillList(downList, [], "更新中", code, "DOWN");
           fillList(upList, [], "更新中", code, "UP");
-          setCardTimes(card, []);
           return;
         }
         const downTrains = (entry?.DOWN || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
@@ -834,14 +800,12 @@
           changes.push({ card, display: "" });
           fillList(downList, [], "暫無班次", code, "DOWN");
           fillList(upList, [], "暫無班次", code, "UP");
-          setCardTimes(card, []);
           return;
         }
 
         changes.push({ card, display: "" });
         fillList(downList, downTrains, "", code, "DOWN");
         fillList(upList, upTrains, "", code, "UP");
-        setCardTimes(card, downTrains.concat(upTrains));
       });
 
       changes.forEach(({ card, display }) => {
