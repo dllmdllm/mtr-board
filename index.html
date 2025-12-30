@@ -801,6 +801,14 @@
           </div>
         </div>
       `;
+      const downList = card.querySelector('[data-dir="DOWN"] .train-list');
+      const upList = card.querySelector('[data-dir="UP"] .train-list');
+      card._refs = {
+        downList,
+        upList,
+        downCol: downList.closest(".dir-col"),
+        upCol: upList.closest(".dir-col")
+      };
       return card;
     }
 
