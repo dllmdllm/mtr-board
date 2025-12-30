@@ -693,6 +693,18 @@
       applyLineFilter();
     }
 
+    function isPrimaryInterchangeCard(card) {
+      const name = card.dataset.name || "";
+      const lines = INTERCHANGE_LINES[name];
+      if (!lines || lines.length === 0) return false;
+      return (card.dataset.line || "") === lines[0];
+    }
+
+    function shouldShowCard(card) {
+      if (activeLine === "XFR") return isPrimaryInterchangeCard(card);
+      return card.dataset.line === activeLine;
+    }
+
     function colorForPlat(plat) {
       const colors = ["#06D6A0", "#118AB2", "#EF476F", "#F4A261", "#90BE6D", "#F72585", "#A8DADC", "#F28482"];
       const num = Number(plat);
@@ -808,7 +820,9 @@
     function applyLineFilter() {
       lineTabs.forEach(btn => btn.classList.toggle("active", btn.dataset.line === activeLine));
       document.querySelectorAll(".station-card").forEach(card => {
-        card.dataset.filtered = card.dataset.line === activeLine ? "0" : "1";
+        const show = shouldShowCard(card);
+        card.dataset.filtered = show ? "0" : "1";
+        card.style.display = show ? "" : "none";
       });
     }
 
