@@ -764,6 +764,8 @@
     const rowState = new Map();
     const ACTIVE_LINE_KEY = "activeLine";
     let activeLine = localStorage.getItem(ACTIVE_LINE_KEY) || "EAL";
+    let visibleCards = [];
+    let visibleRows = [];
 
     function hexToRgb(hex) {
       const cleaned = hex.replace("#", "");
