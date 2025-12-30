@@ -245,6 +245,11 @@
       gap: 10px;
     }
 
+    .xfr-mode {
+      background: transparent;
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+
     .xfr-mode .card-body {
       grid-template-columns: minmax(0, 1fr);
     }
@@ -920,6 +925,7 @@
             downList.innerHTML = "";
             upList.innerHTML = "";
             groups.forEach(group => {
+              if (!group.ok || (group.down.length === 0 && group.up.length === 0)) return;
               const groupWrap = document.createElement("div");
               groupWrap.className = "xfr-group";
               groupWrap.style.setProperty("--line-color", LINE_COLORS[group.lineKey] || "#53B7E8");
@@ -938,22 +944,16 @@
               const lineRow = document.createElement("div");
               lineRow.className = "xfr-pair";
 
-              const makeCol = (dir, trains, otherCount, forceShow) => {
+              const makeCol = (dir, trains) => {
                 const col = document.createElement("div");
                 col.className = "xfr-col";
-                let shown = 0;
-              if (!group.ok || trains.length === 0) {
-                return col;
-              } else {
+                if (trains.length === 0) return col;
                 const shownTrains = trains.slice(0, visibleCount);
                 shownTrains.forEach((train, idx) => {
                   const key = `${group.lineKey}-${code}-${dir}-${idx}`;
                   col.appendChild(trainRow(train, key));
                 });
-                shown = shownTrains.length;
-              }
-              if (shown === 0) return col;
-                const padCount = Math.max(0, visibleCount - shown);
+                const padCount = Math.max(0, visibleCount - shownTrains.length);
                 for (let i = 0; i < padCount; i += 1) {
                   const spacer = document.createElement("div");
                   spacer.className = "train-row xfr-pad";
@@ -963,18 +963,23 @@
                   `;
                   col.appendChild(spacer);
                 }
-                if (!forceShow) {
-                  if (dir === "DOWN" && trains.length === 0 && otherCount > 0) col.style.display = "none";
-                  if (dir === "UP" && trains.length === 0 && otherCount > 0) col.style.display = "none";
-                }
                 return col;
               };
 
-              const forceShow = name === "金鐘" && group.lineKey === "EAL";
-              const downColLocal = makeCol("DOWN", group.down, group.up.length, forceShow);
-              const upColLocal = makeCol("UP", group.up, group.down.length, forceShow);
-              lineRow.appendChild(downColLocal);
-              lineRow.appendChild(upColLocal);
+              const downHas = group.down.length > 0;
+              const upHas = group.up.length > 0;
+              if (downHas && upHas) {
+                lineRow.appendChild(makeCol("DOWN", group.down));
+                lineRow.appendChild(makeCol("UP", group.up));
+              } else if (downHas) {
+                lineRow.style.gridTemplateColumns = "minmax(0, 1fr)";
+                lineRow.appendChild(makeCol("DOWN", group.down));
+              } else if (upHas) {
+                lineRow.style.gridTemplateColumns = "minmax(0, 1fr)";
+                lineRow.appendChild(makeCol("UP", group.up));
+              } else {
+                return;
+              }
               groupWrap.appendChild(lineRow);
 
               downList.appendChild(groupWrap);
