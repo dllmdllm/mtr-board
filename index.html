@@ -949,6 +949,7 @@
     function applyLineFilter() {
       lineTabs.forEach(btn => btn.classList.toggle("active", btn.dataset.line === activeLine));
       visibleCards = [];
+      visibleRows = [];
       document.querySelectorAll(".station-card").forEach(card => {
         const show = shouldShowCard(card);
         card.dataset.filtered = show ? "0" : "1";
