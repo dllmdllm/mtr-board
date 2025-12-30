@@ -948,16 +948,24 @@
 
     function applyLineFilter() {
       lineTabs.forEach(btn => btn.classList.toggle("active", btn.dataset.line === activeLine));
+      visibleCards = [];
       document.querySelectorAll(".station-card").forEach(card => {
         const show = shouldShowCard(card);
         card.dataset.filtered = show ? "0" : "1";
         card.style.display = show ? "" : "none";
         card.classList.toggle("xfr-mode", activeLine === "XFR" && show);
+        if (show) visibleCards.push(card);
       });
     }
 
     function updateAllRows() {
-      document.querySelectorAll(".station-card .train-row").forEach(updateRowCountdown);
+      if (visibleRows.length === 0) {
+        visibleCards.forEach(card => {
+          card.querySelectorAll(".train-row").forEach(updateRowCountdown);
+        });
+        return;
+      }
+      visibleRows.forEach(updateRowCountdown);
     }
 
     async function fetchStation(line, code) {
