@@ -660,6 +660,7 @@
       card.className = "station-card fade-in";
       card.dataset.code = station.code;
       card.dataset.line = station.line;
+      card.dataset.name = station.name;
       const lineColor = LINE_COLORS[station.line] || "#53B7E8";
       card.style.setProperty("--line-color", lineColor);
       card.style.setProperty("--line-color-rgb", hexToRgb(lineColor));
