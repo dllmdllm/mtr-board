@@ -942,20 +942,17 @@
                 const col = document.createElement("div");
                 col.className = "xfr-col";
                 let shown = 0;
-                if (!group.ok) {
-                  col.appendChild(statusRow("更新中"));
-                  shown = 1;
-                } else if (trains.length === 0) {
-                  col.appendChild(statusRow("暫無班次"));
-                  shown = 1;
-                } else {
-                  const shownTrains = trains.slice(0, visibleCount);
-                  shownTrains.forEach((train, idx) => {
-                    const key = `${group.lineKey}-${code}-${dir}-${idx}`;
-                    col.appendChild(trainRow(train, key));
-                  });
-                  shown = shownTrains.length;
-                }
+              if (!group.ok || trains.length === 0) {
+                return col;
+              } else {
+                const shownTrains = trains.slice(0, visibleCount);
+                shownTrains.forEach((train, idx) => {
+                  const key = `${group.lineKey}-${code}-${dir}-${idx}`;
+                  col.appendChild(trainRow(train, key));
+                });
+                shown = shownTrains.length;
+              }
+              if (shown === 0) return col;
                 const padCount = Math.max(0, visibleCount - shown);
                 for (let i = 0; i < padCount; i += 1) {
                   const spacer = document.createElement("div");
