@@ -1019,8 +1019,8 @@
               const downHas = group.down.length > 0;
               const upHas = group.up.length > 0;
               if (!group.ok) {
-                lineRow.style.gridTemplateColumns = "minmax(0, 1fr)";
                 lineRow.appendChild(makeCol("DOWN", [], "更新中"));
+                lineRow.appendChild(makeCol("UP", [], "更新中"));
               } else if (downHas && upHas) {
                 lineRow.appendChild(makeCol("DOWN", group.down));
                 lineRow.appendChild(makeCol("UP", group.up));
@@ -1031,8 +1031,8 @@
                 lineRow.style.gridTemplateColumns = "minmax(0, 1fr)";
                 lineRow.appendChild(makeCol("UP", group.up));
               } else {
-                lineRow.style.gridTemplateColumns = "minmax(0, 1fr)";
                 lineRow.appendChild(makeCol("DOWN", [], "暫無班次"));
+                lineRow.appendChild(makeCol("UP", [], "暫無班次"));
               }
               groupWrap.appendChild(lineRow);
 
