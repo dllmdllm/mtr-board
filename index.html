@@ -257,35 +257,6 @@
       gap: 6px;
     }
 
-    .xfr-group {
-      display: grid;
-      gap: 6px;
-      padding: 6px 8px;
-      border: 1px solid rgba(var(--line-color-rgb), 0.4);
-      border-radius: 10px;
-      background: linear-gradient(
-        180deg,
-        rgba(var(--line-color-rgb), 0.2),
-        rgba(var(--line-color-rgb), 0.08)
-      );
-    }
-
-    .xfr-pad {
-      opacity: 0;
-    }
-
-    .xfr-pair {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 10px;
-    }
-
-    .xfr-col {
-      display: grid;
-      gap: 6px;
-      min-width: 0;
-    }
-
     .train-row {
       display: flex;
       align-items: baseline;
@@ -450,7 +421,6 @@
       <button class="line-tab" data-line="SIL" style="--tab-color:#B5BD00;">南港島</button>
       <button class="line-tab" data-line="AEL" style="--tab-color:#00888A;">機鐵</button>
       <button class="line-tab" data-line="DRL" style="--tab-color:#E4007F;">迪士尼</button>
-      <button class="line-tab" data-line="XFR" style="--tab-color:#f5b700;">轉車</button>
     </div>
 
     <section id="board" class="board"></section>
@@ -581,54 +551,6 @@
       { line: "DRL", code: "DIS", name: "迪士尼" }
     ];
 
-    const INTERCHANGE_LINES = {
-      "中環": ["TWL", "ISL"],
-      "金鐘": ["EAL", "ISL", "TWL", "SIL"],
-      "香港": ["AEL", "TCL"],
-      "九龍": ["AEL", "TCL"],
-      "青衣": ["AEL", "TCL"],
-      "欣澳": ["TCL", "DRL"],
-      "茘景": ["TWL", "TCL"],
-      "南昌": ["TML", "TCL"],
-      "美孚": ["TML", "TWL"],
-      "太子": ["KTL", "TWL"],
-      "旺角": ["KTL", "TWL"],
-      "油麻地": ["KTL", "TWL"],
-      "九龍塘": ["EAL", "KTL"],
-      "何文田": ["TML", "KTL"],
-      "鑽石山": ["TML", "KTL"],
-      "調景嶺": ["KTL", "TKL"],
-      "油塘": ["KTL", "TKL"],
-      "北角": ["ISL", "TKL"],
-      "鰂魚涌": ["ISL", "TKL"],
-      "大圍": ["EAL", "TML"],
-      "紅磡": ["EAL", "TML"]
-    };
-
-    const INTERCHANGE_LIST = [
-      "中環",
-      "金鐘",
-      "香港",
-      "九龍",
-      "青衣",
-      "欣澳",
-      "茘景",
-      "南昌",
-      "美孚",
-      "太子",
-      "旺角",
-      "油麻地",
-      "九龍塘",
-      "何文田",
-      "鑽石山",
-      "調景嶺",
-      "油塘",
-      "北角",
-      "鰂魚涌",
-      "大圍",
-      "紅磡"
-    ];
-
     const CODE_TO_NAME = new Map(STATIONS.map(s => [s.code, s.name]));
 
     const API_BASE = "https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php";
@@ -648,18 +570,6 @@
       TKL: "#7D3C98",
       SIL: "#B5BD00",
       DRL: "#E4007F"
-    };
-    const LINE_NAMES = {
-      EAL: "東鐵",
-      TML: "屯馬",
-      KTL: "觀塘",
-      TWL: "荃灣",
-      ISL: "港島",
-      TKL: "將軍澳",
-      TCL: "東涌",
-      SIL: "南港島",
-      AEL: "機鐵",
-      DRL: "迪士尼"
     };
     const DIR_OVERRIDE = {};
 
@@ -689,7 +599,6 @@
       card.className = "station-card fade-in";
       card.dataset.code = station.code;
       card.dataset.line = station.line;
-      card.dataset.name = station.name;
       const lineColor = LINE_COLORS[station.line] || "#53B7E8";
       card.style.setProperty("--line-color", lineColor);
       card.style.setProperty("--line-color-rgb", hexToRgb(lineColor));
@@ -720,18 +629,6 @@
         board.appendChild(card);
       });
       applyLineFilter();
-    }
-
-    function isPrimaryInterchangeCard(card) {
-      const name = card.dataset.name || "";
-      const lines = INTERCHANGE_LINES[name];
-      if (!lines || lines.length === 0) return false;
-      return (card.dataset.line || "") === lines[0];
-    }
-
-    function shouldShowCard(card) {
-      if (activeLine === "XFR") return isPrimaryInterchangeCard(card);
-      return card.dataset.line === activeLine;
     }
 
     function colorForPlat(plat) {
@@ -849,9 +746,7 @@
     function applyLineFilter() {
       lineTabs.forEach(btn => btn.classList.toggle("active", btn.dataset.line === activeLine));
       document.querySelectorAll(".station-card").forEach(card => {
-        const show = shouldShowCard(card);
-        card.dataset.filtered = show ? "0" : "1";
-        card.style.display = show ? "" : "none";
+        card.dataset.filtered = card.dataset.line === activeLine ? "0" : "1";
       });
     }
 
@@ -887,98 +782,16 @@
       cards.forEach(card => {
         const line = card.dataset.line || "EAL";
         const code = card.dataset.code;
-        if (!shouldShowCard(card)) {
+        if (line !== activeLine) {
           changes.push({ card, display: "none" });
           return;
         }
-        const name = card.dataset.name || "";
-        const linesToShow = activeLine === "XFR" ? (INTERCHANGE_LINES[name] || [line]) : [line];
-        const groups = linesToShow.map(lineKey => {
-          const data = byKey.get(`${lineKey}-${code}`);
-          const entry = data?.data?.[`${lineKey}-${code}`];
-          const down = (entry?.DOWN || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
-          const up = (entry?.UP || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
-          return { lineKey, down, up, ok: !!entry };
-        });
+        const data = byKey.get(`${line}-${code}`);
+        const entry = data?.data?.[`${line}-${code}`];
         const downList = card.querySelector('[data-dir="DOWN"] .train-list');
         const upList = card.querySelector('[data-dir="UP"] .train-list');
         const downCol = downList.closest(".dir-col");
         const upCol = upList.closest(".dir-col");
-
-        if (activeLine === "XFR") {
-          changes.push({ card, display: "" });
-          const renderMulti = () => {
-            downList.innerHTML = "";
-            upList.innerHTML = "";
-            groups.forEach(group => {
-              const groupWrap = document.createElement("div");
-              groupWrap.className = "xfr-group";
-              groupWrap.style.setProperty("--line-color", LINE_COLORS[group.lineKey] || "#53B7E8");
-              groupWrap.style.setProperty("--line-color-rgb", hexToRgb(LINE_COLORS[group.lineKey] || "#53B7E8"));
-
-              const header = document.createElement("div");
-              header.className = "train-row";
-              header.dataset.status = "status";
-              header.style.color = LINE_COLORS[group.lineKey] || "#53B7E8";
-              header.innerHTML = `
-                <span class="train-dest">${LINE_NAMES[group.lineKey] || group.lineKey}</span>
-                <span class="train-right"><span class="train-mins"></span><span class="train-hint"></span></span>
-              `;
-              groupWrap.appendChild(header);
-
-              const lineRow = document.createElement("div");
-              lineRow.className = "xfr-pair";
-
-              const makeCol = (dir, trains, otherCount) => {
-                const col = document.createElement("div");
-                col.className = "xfr-col";
-                let shown = 0;
-                if (!group.ok) {
-                  col.appendChild(statusRow("更新中"));
-                  shown = 1;
-                } else if (trains.length === 0) {
-                  col.appendChild(statusRow("暫無班次"));
-                  shown = 1;
-                } else {
-                  const shownTrains = trains.slice(0, visibleCount);
-                  shownTrains.forEach((train, idx) => {
-                    const key = `${group.lineKey}-${code}-${dir}-${idx}`;
-                    col.appendChild(trainRow(train, key));
-                  });
-                  shown = shownTrains.length;
-                }
-                const padCount = Math.max(0, visibleCount - shown);
-                for (let i = 0; i < padCount; i += 1) {
-                  const spacer = document.createElement("div");
-                  spacer.className = "train-row xfr-pad";
-                  spacer.innerHTML = `
-                    <span class="train-dest">&nbsp;</span>
-                    <span class="train-right"><span class="train-mins">&nbsp;</span><span class="train-hint"></span></span>
-                  `;
-                  col.appendChild(spacer);
-                }
-                if (dir === "DOWN" && trains.length === 0 && otherCount > 0) col.style.display = "none";
-                if (dir === "UP" && trains.length === 0 && otherCount > 0) col.style.display = "none";
-                return col;
-              };
-
-              const downColLocal = makeCol("DOWN", group.down, group.up.length);
-              const upColLocal = makeCol("UP", group.up, group.down.length);
-              lineRow.appendChild(downColLocal);
-              lineRow.appendChild(upColLocal);
-              groupWrap.appendChild(lineRow);
-
-              downList.appendChild(groupWrap);
-            });
-          };
-          downCol.style.display = "";
-          upCol.style.display = "";
-          renderMulti();
-          return;
-        }
-
-        const data = byKey.get(`${line}-${code}`);
-        const entry = data?.data?.[`${line}-${code}`];
         if (!data || !entry) {
           changes.push({ card, display: "" });
           downCol.style.display = "";
@@ -987,8 +800,8 @@
           fillList(upList, [], "更新中", code, "UP");
           return;
         }
-        const downTrains = groups[0]?.down || [];
-        const upTrains = groups[0]?.up || [];
+        const downTrains = (entry?.DOWN || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
+        const upTrains = (entry?.UP || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
         const hasAnyTrain = downTrains.length > 0 || upTrains.length > 0;
         const override = DIR_OVERRIDE[`${line}-${code}`];
 
