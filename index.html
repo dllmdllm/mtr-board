@@ -566,6 +566,10 @@
       SIL: "#B5BD00",
       DRL: "#E4007F"
     };
+    const DIR_OVERRIDE = {
+      "EAL-LOW": "DOWN",
+      "EAL-LMC": "DOWN"
+    };
 
     const board = document.getElementById("board");
     const lastUpdate = document.getElementById("last-update");
@@ -782,8 +786,12 @@
         const entry = data?.data?.[`${line}-${code}`];
         const downList = card.querySelector('[data-dir="DOWN"] .train-list');
         const upList = card.querySelector('[data-dir="UP"] .train-list');
+        const downCol = downList.closest(".dir-col");
+        const upCol = upList.closest(".dir-col");
         if (!data || !entry) {
           changes.push({ card, display: "" });
+          downCol.style.display = "";
+          upCol.style.display = "";
           fillList(downList, [], "更新中", code, "DOWN");
           fillList(upList, [], "更新中", code, "UP");
           return;
@@ -791,6 +799,7 @@
         const downTrains = (entry?.DOWN || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
         const upTrains = (entry?.UP || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
         const hasAnyTrain = downTrains.length > 0 || upTrains.length > 0;
+        const override = DIR_OVERRIDE[`${line}-${code}`];
 
         if (!hasAnyTrain) {
           if (line === "EAL" && code === "RAC") {
@@ -798,14 +807,46 @@
             return;
           }
           changes.push({ card, display: "" });
-          fillList(downList, [], "暫無班次", code, "DOWN");
-          fillList(upList, [], "暫無班次", code, "UP");
+          downCol.style.display = "";
+          upCol.style.display = "";
+          if (override === "DOWN") {
+            upCol.style.display = "none";
+            fillList(downList, [], "暫無班次", code, "DOWN");
+          } else if (override === "UP") {
+            downCol.style.display = "none";
+            fillList(upList, [], "暫無班次", code, "UP");
+          } else {
+            fillList(downList, [], "暫無班次", code, "DOWN");
+            fillList(upList, [], "暫無班次", code, "UP");
+          }
           return;
         }
 
         changes.push({ card, display: "" });
-        fillList(downList, downTrains, "", code, "DOWN");
-        fillList(upList, upTrains, "", code, "UP");
+        if (override === "DOWN") {
+          downCol.style.display = "";
+          upCol.style.display = "none";
+          fillList(downList, downTrains, "", code, "DOWN");
+        } else if (override === "UP") {
+          downCol.style.display = "none";
+          upCol.style.display = "";
+          fillList(upList, upTrains, "", code, "UP");
+        } else {
+          if (downTrains.length > 0) {
+            downCol.style.display = "";
+            fillList(downList, downTrains, "", code, "DOWN");
+          } else {
+            downCol.style.display = upTrains.length > 0 ? "none" : "";
+            if (downCol.style.display !== "none") fillList(downList, [], "暫無班次", code, "DOWN");
+          }
+          if (upTrains.length > 0) {
+            upCol.style.display = "";
+            fillList(upList, upTrains, "", code, "UP");
+          } else {
+            upCol.style.display = downTrains.length > 0 ? "none" : "";
+            if (upCol.style.display !== "none") fillList(upList, [], "暫無班次", code, "UP");
+          }
+        }
       });
 
       changes.forEach(({ card, display }) => {
