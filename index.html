@@ -860,6 +860,7 @@
         const show = shouldShowCard(card);
         card.dataset.filtered = show ? "0" : "1";
         card.style.display = show ? "" : "none";
+        card.classList.toggle("xfr-mode", activeLine === "XFR" && show);
       });
     }
 
