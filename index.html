@@ -1149,6 +1149,10 @@
             fillList(downList, [], "暫無班次", code, "DOWN");
             fillList(upList, [], "暫無班次", code, "UP");
           }
+          downList.querySelectorAll(".train-row").forEach(row => visibleRows.push(row));
+          if (upCol.style.display !== "none") {
+            upList.querySelectorAll(".train-row").forEach(row => visibleRows.push(row));
+          }
           return;
         }
 
