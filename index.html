@@ -858,16 +858,62 @@
       cards.forEach(card => {
         const line = card.dataset.line || "EAL";
         const code = card.dataset.code;
-        if (line !== activeLine) {
+        if (!shouldShowCard(card)) {
           changes.push({ card, display: "none" });
           return;
         }
-        const data = byKey.get(`${line}-${code}`);
-        const entry = data?.data?.[`${line}-${code}`];
+        const name = card.dataset.name || "";
+        const linesToShow = activeLine === "XFR" ? (INTERCHANGE_LINES[name] || [line]) : [line];
+        const groups = linesToShow.map(lineKey => {
+          const data = byKey.get(`${lineKey}-${code}`);
+          const entry = data?.data?.[`${lineKey}-${code}`];
+          const down = (entry?.DOWN || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
+          const up = (entry?.UP || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
+          return { lineKey, down, up, ok: !!entry };
+        });
         const downList = card.querySelector('[data-dir="DOWN"] .train-list');
         const upList = card.querySelector('[data-dir="UP"] .train-list');
         const downCol = downList.closest(".dir-col");
         const upCol = upList.closest(".dir-col");
+
+        if (activeLine === "XFR") {
+          changes.push({ card, display: "" });
+          const renderMulti = (listEl, dir) => {
+            listEl.innerHTML = "";
+            groups.forEach(group => {
+              const header = document.createElement("div");
+              header.className = "train-row";
+              header.dataset.status = "status";
+              header.style.color = LINE_COLORS[group.lineKey] || "#53B7E8";
+              header.innerHTML = `
+                <span class="train-dest">${LINE_NAMES[group.lineKey] || group.lineKey}</span>
+                <span class="train-right"><span class="train-mins"></span><span class="train-hint"></span></span>
+              `;
+              listEl.appendChild(header);
+              if (!group.ok) {
+                listEl.appendChild(statusRow("更新中"));
+                return;
+              }
+              const trains = dir === "DOWN" ? group.down : group.up;
+              if (trains.length === 0) {
+                listEl.appendChild(statusRow("暫無班次"));
+                return;
+              }
+              trains.slice(0, visibleCount).forEach((train, idx) => {
+                const key = `${group.lineKey}-${code}-${dir}-${idx}`;
+                listEl.appendChild(trainRow(train, key));
+              });
+            });
+          };
+          downCol.style.display = "";
+          upCol.style.display = "";
+          renderMulti(downList, "DOWN");
+          renderMulti(upList, "UP");
+          return;
+        }
+
+        const data = byKey.get(`${line}-${code}`);
+        const entry = data?.data?.[`${line}-${code}`];
         if (!data || !entry) {
           changes.push({ card, display: "" });
           downCol.style.display = "";
@@ -876,8 +922,8 @@
           fillList(upList, [], "更新中", code, "UP");
           return;
         }
-        const downTrains = (entry?.DOWN || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
-        const upTrains = (entry?.UP || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
+        const downTrains = groups[0]?.down || [];
+        const upTrains = groups[0]?.up || [];
         const hasAnyTrain = downTrains.length > 0 || upTrains.length > 0;
         const override = DIR_OVERRIDE[`${line}-${code}`];
 
