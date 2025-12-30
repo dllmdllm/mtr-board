@@ -978,16 +978,6 @@
               groupWrap.style.setProperty("--line-color", LINE_COLORS[group.lineKey] || "#53B7E8");
               groupWrap.style.setProperty("--line-color-rgb", hexToRgb(LINE_COLORS[group.lineKey] || "#53B7E8"));
 
-              const header = document.createElement("div");
-              header.className = "train-row xfr-header";
-              header.dataset.status = "status";
-              header.style.color = LINE_COLORS[group.lineKey] || "#53B7E8";
-              header.innerHTML = `
-                <span class="train-dest">${LINE_NAMES[group.lineKey] || group.lineKey}</span>
-                <span class="train-right"><span class="train-mins"></span><span class="train-hint"></span></span>
-              `;
-              groupWrap.appendChild(header);
-
               const lineRow = document.createElement("div");
               lineRow.className = "xfr-pair";
 
@@ -1031,6 +1021,7 @@
                 lineRow.style.gridTemplateColumns = "minmax(0, 1fr)";
                 lineRow.appendChild(makeCol("UP", group.up));
               } else {
+                groupWrap.classList.add("xfr-empty");
                 lineRow.appendChild(makeCol("DOWN", [], "暫無班次"));
                 lineRow.appendChild(makeCol("UP", [], "暫無班次"));
               }
