@@ -922,7 +922,7 @@
               groupWrap.style.setProperty("--line-color-rgb", hexToRgb(LINE_COLORS[group.lineKey] || "#53B7E8"));
 
               const header = document.createElement("div");
-              header.className = "train-row";
+              header.className = "train-row xfr-header";
               header.dataset.status = "status";
               header.style.color = LINE_COLORS[group.lineKey] || "#53B7E8";
               header.innerHTML = `
