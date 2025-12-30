@@ -325,12 +325,14 @@
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 10px;
+      width: 100%;
     }
 
     .xfr-col {
       display: grid;
       gap: 6px;
       min-width: 0;
+      width: 100%;
     }
 
     .xfr-header {
@@ -351,6 +353,10 @@
       padding: 0;
       border: none;
       background: transparent;
+    }
+
+    .xfr-empty .xfr-pair {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     }
 
     .train-row {
