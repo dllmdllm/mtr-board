@@ -551,6 +551,30 @@
       { line: "DRL", code: "DIS", name: "迪士尼" }
     ];
 
+    const INTERCHANGE_MAP = {
+      "中環": ["TWL", "ISL"],
+      "金鐘": ["EAL", "ISL", "TWL", "SIL"],
+      "香港": ["AEL", "TCL"],
+      "九龍": ["AEL", "TCL"],
+      "青衣": ["AEL", "TCL"],
+      "欣澳": ["TCL", "DRL"],
+      "茘景": ["TWL", "TCL"],
+      "南昌": ["TML", "TCL"],
+      "美孚": ["TML", "TWL"],
+      "太子": ["KTL", "TWL"],
+      "旺角": ["KTL", "TWL"],
+      "油麻地": ["KTL", "TWL"],
+      "九龍塘": ["EAL", "KTL"],
+      "何文田": ["TML", "KTL"],
+      "鑽石山": ["TML", "KTL"],
+      "調景嶺": ["KTL", "TKL"],
+      "油塘": ["KTL", "TKL"],
+      "北角": ["ISL", "TKL"],
+      "鰂魚涌": ["ISL", "TKL"],
+      "大圍": ["EAL", "TML"],
+      "紅磡": ["EAL", "TML"]
+    };
+
     const CODE_TO_NAME = new Map(STATIONS.map(s => [s.code, s.name]));
 
     const API_BASE = "https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php";
@@ -599,6 +623,7 @@
       card.className = "station-card fade-in";
       card.dataset.code = station.code;
       card.dataset.line = station.line;
+      card.dataset.name = station.name;
       const lineColor = LINE_COLORS[station.line] || "#53B7E8";
       card.style.setProperty("--line-color", lineColor);
       card.style.setProperty("--line-color-rgb", hexToRgb(lineColor));
@@ -619,6 +644,15 @@
         </div>
       `;
       return card;
+    }
+
+    function shouldShowCard(card) {
+      const line = card.dataset.line || "";
+      const name = card.dataset.name || "";
+      if (line === activeLine) return true;
+      const lines = INTERCHANGE_MAP[name];
+      if (!lines) return false;
+      return lines.includes(activeLine) && lines.includes(line);
     }
 
     function renderBoard() {
@@ -746,7 +780,9 @@
     function applyLineFilter() {
       lineTabs.forEach(btn => btn.classList.toggle("active", btn.dataset.line === activeLine));
       document.querySelectorAll(".station-card").forEach(card => {
-        card.dataset.filtered = card.dataset.line === activeLine ? "0" : "1";
+        const show = shouldShowCard(card);
+        card.dataset.filtered = show ? "0" : "1";
+        card.style.display = show ? "" : "none";
       });
     }
 
@@ -782,7 +818,7 @@
       cards.forEach(card => {
         const line = card.dataset.line || "EAL";
         const code = card.dataset.code;
-        if (line !== activeLine) {
+        if (!shouldShowCard(card)) {
           changes.push({ card, display: "none" });
           return;
         }
