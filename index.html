@@ -976,16 +976,31 @@
     }
 
     async function refreshAll() {
-      const cards = Array.from(document.querySelectorAll(".station-card"));
+      const cards = visibleCards.length > 0
+        ? visibleCards
+        : Array.from(document.querySelectorAll(".station-card"));
       lastUpdate.textContent = "更新中...";
       remaining = REFRESH_SECONDS;
       countdownEl.textContent = remaining;
 
-      const requests = STATIONS.map(s =>
-        fetchStation(s.line, s.code)
-          .then(data => ({ key: `${s.line}-${s.code}`, data }))
-          .catch(() => ({ key: `${s.line}-${s.code}`, data: null }))
-      );
+      const requestKeys = new Set();
+      const requests = [];
+      cards.forEach(card => {
+        const line = card.dataset.line || "EAL";
+        const code = card.dataset.code;
+        const name = card.dataset.name || "";
+        const linesToShow = activeLine === "XFR" ? (INTERCHANGE_LINES[name] || [line]) : [line];
+        linesToShow.forEach(lineKey => {
+          const key = `${lineKey}-${code}`;
+          if (requestKeys.has(key)) return;
+          requestKeys.add(key);
+          requests.push(
+            fetchStation(lineKey, code)
+              .then(data => ({ key, data }))
+              .catch(() => ({ key, data: null }))
+          );
+        });
+      });
 
       const results = await Promise.all(requests);
       const byKey = new Map(results.map(r => [r.key, r.data]));
