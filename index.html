@@ -895,13 +895,10 @@
 
         if (activeLine === "XFR") {
           changes.push({ card, display: "" });
-          const renderMulti = (listEl, dir, otherCount) => {
+          const renderMulti = (listEl, dir) => {
             listEl.innerHTML = "";
             groups.forEach(group => {
               const trains = dir === "DOWN" ? group.down : group.up;
-              const otherLen = otherCount[group.lineKey] || 0;
-              const len = trains.length;
-              const maxLen = Math.max(len, otherLen);
               const groupWrap = document.createElement("div");
               groupWrap.className = "xfr-group";
               groupWrap.style.setProperty("--line-color", LINE_COLORS[group.lineKey] || "#53B7E8");
@@ -915,16 +912,23 @@
                 <span class="train-right"><span class="train-mins"></span><span class="train-hint"></span></span>
               `;
               groupWrap.appendChild(header);
-              if (!group.ok || trains.length === 0) {
-                const row = statusRow(group.ok ? "暫無班次" : "更新中");
-                groupWrap.appendChild(row);
+              let shown = 0;
+              if (!group.ok) {
+                groupWrap.appendChild(statusRow("更新中"));
+                shown = 1;
+              } else if (trains.length === 0) {
+                groupWrap.appendChild(statusRow("暫無班次"));
+                shown = 1;
               } else {
-                trains.slice(0, visibleCount).forEach((train, idx) => {
+                const shownTrains = trains.slice(0, visibleCount);
+                shownTrains.forEach((train, idx) => {
                   const key = `${group.lineKey}-${code}-${dir}-${idx}`;
                   groupWrap.appendChild(trainRow(train, key));
                 });
+                shown = shownTrains.length;
               }
-              for (let i = 0; i < Math.max(0, maxLen - Math.min(len, visibleCount)); i += 1) {
+              const padCount = Math.max(0, visibleCount - shown);
+              for (let i = 0; i < padCount; i += 1) {
                 const spacer = document.createElement("div");
                 spacer.className = "train-row xfr-pad";
                 spacer.innerHTML = `
@@ -936,12 +940,20 @@
               listEl.appendChild(groupWrap);
             });
           };
-          downCol.style.display = "";
-          upCol.style.display = "";
-          const downCount = Object.fromEntries(groups.map(g => [g.lineKey, g.down.length]));
-          const upCount = Object.fromEntries(groups.map(g => [g.lineKey, g.up.length]));
-          renderMulti(downList, "DOWN", upCount);
-          renderMulti(upList, "UP", downCount);
+          const hasAnyDown = groups.some(group => group.down.length > 0);
+          const hasAnyUp = groups.some(group => group.up.length > 0);
+          if (!hasAnyDown && hasAnyUp) {
+            downCol.style.display = "none";
+            upCol.style.display = "";
+          } else if (!hasAnyUp && hasAnyDown) {
+            downCol.style.display = "";
+            upCol.style.display = "none";
+          } else {
+            downCol.style.display = "";
+            upCol.style.display = "";
+          }
+          renderMulti(downList, "DOWN");
+          renderMulti(upList, "UP");
           return;
         }
 
