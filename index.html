@@ -1008,6 +1008,7 @@
       const timeStr = now.toLocaleTimeString("zh-HK", { hour12: false });
 
       const changes = [];
+      visibleRows = [];
       cards.forEach(card => {
         const line = card.dataset.line || "EAL";
         const code = card.dataset.code;
@@ -1024,10 +1025,11 @@
           const up = (entry?.UP || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
           return { lineKey, down, up, ok: !!entry };
         });
-        const downList = card.querySelector('[data-dir="DOWN"] .train-list');
-        const upList = card.querySelector('[data-dir="UP"] .train-list');
-        const downCol = downList.closest(".dir-col");
-        const upCol = upList.closest(".dir-col");
+        const refs = card._refs || {};
+        const downList = refs.downList || card.querySelector('[data-dir="DOWN"] .train-list');
+        const upList = refs.upList || card.querySelector('[data-dir="UP"] .train-list');
+        const downCol = refs.downCol || downList.closest(".dir-col");
+        const upCol = refs.upCol || upList.closest(".dir-col");
 
         if (activeLine === "XFR") {
           changes.push({ card, display: "" });
