@@ -927,48 +927,37 @@
               groupWrap.appendChild(header);
 
               const lineRow = document.createElement("div");
-              lineRow.className = "xfr-pair";
-
-              const makeCol = (dir, trains, otherCount, forceShow) => {
-                const col = document.createElement("div");
-                col.className = "xfr-col";
-                let shown = 0;
-                if (!group.ok) {
-                  col.appendChild(statusRow("更新中"));
-                  shown = 1;
-                } else if (trains.length === 0) {
-                  col.appendChild(statusRow("暫無班次"));
+              lineRow.className = "xfr-single";
+              let shown = 0;
+              if (!group.ok) {
+                lineRow.appendChild(statusRow("更新中"));
+                shown = 1;
+              } else {
+                const merged = [];
+                group.down.forEach(t => merged.push({ ...t, _dir: "DOWN" }));
+                group.up.forEach(t => merged.push({ ...t, _dir: "UP" }));
+                if (merged.length === 0) {
+                  lineRow.appendChild(statusRow("暫無班次"));
                   shown = 1;
                 } else {
-                  const shownTrains = trains.slice(0, visibleCount);
+                  const shownTrains = merged.slice(0, visibleCount);
                   shownTrains.forEach((train, idx) => {
-                    const key = `${group.lineKey}-${code}-${dir}-${idx}`;
-                    col.appendChild(trainRow(train, key));
+                    const key = `${group.lineKey}-${code}-${train._dir}-${idx}`;
+                    lineRow.appendChild(trainRow(train, key));
                   });
                   shown = shownTrains.length;
                 }
-                const padCount = Math.max(0, visibleCount - shown);
-                for (let i = 0; i < padCount; i += 1) {
-                  const spacer = document.createElement("div");
-                  spacer.className = "train-row xfr-pad";
-                  spacer.innerHTML = `
-                    <span class="train-dest">&nbsp;</span>
-                    <span class="train-right"><span class="train-mins">&nbsp;</span><span class="train-hint"></span></span>
-                  `;
-                  col.appendChild(spacer);
-                }
-                if (!forceShow) {
-                  if (dir === "DOWN" && trains.length === 0 && otherCount > 0) col.style.display = "none";
-                  if (dir === "UP" && trains.length === 0 && otherCount > 0) col.style.display = "none";
-                }
-                return col;
-              };
-
-              const forceShow = name === "金鐘" && group.lineKey === "EAL";
-              const downColLocal = makeCol("DOWN", group.down, group.up.length, forceShow);
-              const upColLocal = makeCol("UP", group.up, group.down.length, forceShow);
-              lineRow.appendChild(downColLocal);
-              lineRow.appendChild(upColLocal);
+              }
+              const padCount = Math.max(0, visibleCount - shown);
+              for (let i = 0; i < padCount; i += 1) {
+                const spacer = document.createElement("div");
+                spacer.className = "train-row xfr-pad";
+                spacer.innerHTML = `
+                  <span class="train-dest">&nbsp;</span>
+                  <span class="train-right"><span class="train-mins">&nbsp;</span><span class="train-hint"></span></span>
+                `;
+                lineRow.appendChild(spacer);
+              }
               groupWrap.appendChild(lineRow);
 
               downList.appendChild(groupWrap);
