@@ -990,6 +990,8 @@
               groupWrap.style.setProperty("--line-color", LINE_COLORS[group.lineKey] || "#53B7E8");
               groupWrap.style.setProperty("--line-color-rgb", hexToRgb(LINE_COLORS[group.lineKey] || "#53B7E8"));
 
+              const downHas = group.down.length > 0;
+              const upHas = group.up.length > 0;
               if (downHas || upHas || !group.ok) {
                 const header = document.createElement("div");
                 header.className = "train-row xfr-header";
@@ -1030,8 +1032,6 @@
                 return col;
               };
 
-              const downHas = group.down.length > 0;
-              const upHas = group.up.length > 0;
               if (!group.ok) {
                 lineRow.appendChild(makeCol("DOWN", [], "更新中"));
                 lineRow.appendChild(makeCol("UP", [], "更新中"));
