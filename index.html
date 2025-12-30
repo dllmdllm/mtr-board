@@ -245,6 +245,14 @@
       gap: 10px;
     }
 
+    .xfr-mode .card-body {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .xfr-mode .dir-col[data-dir="UP"] {
+      display: none;
+    }
+
     .dir-col {
       display: grid;
       min-width: 0;
