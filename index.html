@@ -631,6 +631,13 @@
       applyLineFilter();
     }
 
+    function colorForPlat(plat) {
+      const colors = ["#06D6A0", "#118AB2", "#EF476F", "#F4A261", "#90BE6D", "#F72585", "#A8DADC", "#F28482"];
+      const num = Number(plat);
+      if (Number.isNaN(num)) return "";
+      return colors[(Math.abs(num) - 1) % colors.length];
+    }
+
     function statusRow(text) {
       const row = document.createElement("div");
       row.className = "train-row";
@@ -680,6 +687,8 @@
       const mins = train.ttnt ?? "--";
       const plat = train.plat ?? "--";
       const time = train.time ?? "--";
+      const color = colorForPlat(plat);
+      if (color) row.style.color = color;
       row.dataset.key = key;
       const targetMs = computeTargetMs(train);
       if (!Number.isNaN(targetMs)) row.dataset.target = String(targetMs);
