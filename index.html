@@ -895,14 +895,15 @@
 
         if (activeLine === "XFR") {
           changes.push({ card, display: "" });
-          const renderMulti = (listEl, dir) => {
-            listEl.innerHTML = "";
+          const renderMulti = () => {
+            downList.innerHTML = "";
+            upList.innerHTML = "";
             groups.forEach(group => {
-              const trains = dir === "DOWN" ? group.down : group.up;
               const groupWrap = document.createElement("div");
               groupWrap.className = "xfr-group";
               groupWrap.style.setProperty("--line-color", LINE_COLORS[group.lineKey] || "#53B7E8");
               groupWrap.style.setProperty("--line-color-rgb", hexToRgb(LINE_COLORS[group.lineKey] || "#53B7E8"));
+
               const header = document.createElement("div");
               header.className = "train-row";
               header.dataset.status = "status";
@@ -912,48 +913,55 @@
                 <span class="train-right"><span class="train-mins"></span><span class="train-hint"></span></span>
               `;
               groupWrap.appendChild(header);
-              let shown = 0;
-              if (!group.ok) {
-                groupWrap.appendChild(statusRow("更新中"));
-                shown = 1;
-              } else if (trains.length === 0) {
-                groupWrap.appendChild(statusRow("暫無班次"));
-                shown = 1;
-              } else {
-                const shownTrains = trains.slice(0, visibleCount);
-                shownTrains.forEach((train, idx) => {
-                  const key = `${group.lineKey}-${code}-${dir}-${idx}`;
-                  groupWrap.appendChild(trainRow(train, key));
-                });
-                shown = shownTrains.length;
-              }
-              const padCount = Math.max(0, visibleCount - shown);
-              for (let i = 0; i < padCount; i += 1) {
-                const spacer = document.createElement("div");
-                spacer.className = "train-row xfr-pad";
-                spacer.innerHTML = `
-                  <span class="train-dest">&nbsp;</span>
-                  <span class="train-right"><span class="train-mins">&nbsp;</span><span class="train-hint"></span></span>
-                `;
-                groupWrap.appendChild(spacer);
-              }
-              listEl.appendChild(groupWrap);
+
+              const lineRow = document.createElement("div");
+              lineRow.className = "xfr-pair";
+
+              const makeCol = (dir, trains, otherCount) => {
+                const col = document.createElement("div");
+                col.className = "xfr-col";
+                let shown = 0;
+                if (!group.ok) {
+                  col.appendChild(statusRow("更新中"));
+                  shown = 1;
+                } else if (trains.length === 0) {
+                  col.appendChild(statusRow("暫無班次"));
+                  shown = 1;
+                } else {
+                  const shownTrains = trains.slice(0, visibleCount);
+                  shownTrains.forEach((train, idx) => {
+                    const key = `${group.lineKey}-${code}-${dir}-${idx}`;
+                    col.appendChild(trainRow(train, key));
+                  });
+                  shown = shownTrains.length;
+                }
+                const padCount = Math.max(0, visibleCount - shown);
+                for (let i = 0; i < padCount; i += 1) {
+                  const spacer = document.createElement("div");
+                  spacer.className = "train-row xfr-pad";
+                  spacer.innerHTML = `
+                    <span class="train-dest">&nbsp;</span>
+                    <span class="train-right"><span class="train-mins">&nbsp;</span><span class="train-hint"></span></span>
+                  `;
+                  col.appendChild(spacer);
+                }
+                if (dir === "DOWN" && trains.length === 0 && otherCount > 0) col.style.display = "none";
+                if (dir === "UP" && trains.length === 0 && otherCount > 0) col.style.display = "none";
+                return col;
+              };
+
+              const downColLocal = makeCol("DOWN", group.down, group.up.length);
+              const upColLocal = makeCol("UP", group.up, group.down.length);
+              lineRow.appendChild(downColLocal);
+              lineRow.appendChild(upColLocal);
+              groupWrap.appendChild(lineRow);
+
+              downList.appendChild(groupWrap);
             });
           };
-          const hasAnyDown = groups.some(group => group.down.length > 0);
-          const hasAnyUp = groups.some(group => group.up.length > 0);
-          if (!hasAnyDown && hasAnyUp) {
-            downCol.style.display = "none";
-            upCol.style.display = "";
-          } else if (!hasAnyUp && hasAnyDown) {
-            downCol.style.display = "";
-            upCol.style.display = "none";
-          } else {
-            downCol.style.display = "";
-            upCol.style.display = "";
-          }
-          renderMulti(downList, "DOWN");
-          renderMulti(upList, "UP");
+          downCol.style.display = "";
+          upCol.style.display = "";
+          renderMulti();
           return;
         }
 
