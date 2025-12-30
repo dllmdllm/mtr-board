@@ -929,7 +929,7 @@
               const lineRow = document.createElement("div");
               lineRow.className = "xfr-pair";
 
-              const makeCol = (dir, trains, otherCount) => {
+              const makeCol = (dir, trains, otherCount, forceShow) => {
                 const col = document.createElement("div");
                 col.className = "xfr-col";
                 let shown = 0;
@@ -957,13 +957,16 @@
                   `;
                   col.appendChild(spacer);
                 }
-                if (dir === "DOWN" && trains.length === 0 && otherCount > 0) col.style.display = "none";
-                if (dir === "UP" && trains.length === 0 && otherCount > 0) col.style.display = "none";
+                if (!forceShow) {
+                  if (dir === "DOWN" && trains.length === 0 && otherCount > 0) col.style.display = "none";
+                  if (dir === "UP" && trains.length === 0 && otherCount > 0) col.style.display = "none";
+                }
                 return col;
               };
 
-              const downColLocal = makeCol("DOWN", group.down, group.up.length);
-              const upColLocal = makeCol("UP", group.up, group.down.length);
+              const forceShow = name === "金鐘" && group.lineKey === "EAL";
+              const downColLocal = makeCol("DOWN", group.down, group.up.length, forceShow);
+              const upColLocal = makeCol("UP", group.up, group.down.length, forceShow);
               lineRow.appendChild(downColLocal);
               lineRow.appendChild(upColLocal);
               groupWrap.appendChild(lineRow);
