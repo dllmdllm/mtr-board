@@ -631,13 +631,6 @@
       applyLineFilter();
     }
 
-    function colorForPlat(plat) {
-      const colors = ["#06D6A0", "#118AB2", "#EF476F", "#F4A261", "#90BE6D", "#F72585", "#A8DADC", "#F28482"];
-      const num = Number(plat);
-      if (Number.isNaN(num)) return "";
-      return colors[(Math.abs(num) - 1) % colors.length];
-    }
-
     function statusRow(text) {
       const row = document.createElement("div");
       row.className = "train-row";
@@ -673,9 +666,9 @@
       return `${mins} 分`;
     }
 
-    function trainRow(train, isHighlight, key) {
+    function trainRow(train, key) {
       const row = document.createElement("div");
-      row.className = isHighlight ? "train-row highlight" : "train-row";
+      row.className = "train-row";
       if (!train) {
         row.innerHTML = `
           <span class="train-dest">--</span>
@@ -687,10 +680,6 @@
       const mins = train.ttnt ?? "--";
       const plat = train.plat ?? "--";
       const time = train.time ?? "--";
-      if (!isHighlight) {
-        const color = colorForPlat(plat);
-        if (color) row.style.color = color;
-      }
       row.dataset.key = key;
       const targetMs = computeTargetMs(train);
       if (!Number.isNaN(targetMs)) row.dataset.target = String(targetMs);
@@ -710,7 +699,7 @@
       }
       trains.slice(0, visibleCount).forEach((train, idx) => {
         const key = `${stationCode}-${direction}-${idx}`;
-        listEl.appendChild(trainRow(train, idx === 0, key));
+        listEl.appendChild(trainRow(train, key));
       });
     }
 
@@ -737,7 +726,11 @@
       const minsEl = row.querySelector(".train-mins");
       const hintEl = row.querySelector(".train-hint");
       const label = formatCountdown(displaySec);
-      if (minsEl) minsEl.textContent = label;
+      const shouldBlink = label === "就到" || label === "已開";
+      if (minsEl) {
+        minsEl.textContent = label;
+        minsEl.classList.toggle("blink", shouldBlink);
+      }
       if (hintEl) hintEl.textContent = "";
     }
 
