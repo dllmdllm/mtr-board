@@ -778,6 +778,8 @@
     const CODE_TO_NAME = new Map(STATIONS.map(s => [s.code, s.name]));
 
     const API_BASE = "https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php";
+    const CP_RESIDENT_URL = "https://secure1.info.gov.hk/immd/mobileapps/2bb9ae17/data/CPQueueTimeR.json";
+    const CP_VISITOR_URL = "https://secure1.info.gov.hk/immd/mobileapps/2bb9ae17/data/CPQueueTimeV.json";
     const REFRESH_SECONDS = 15;
     const NORMAL_DIFF = 10;
     const MEDIUM_DIFF = 45;
@@ -808,6 +810,16 @@
       DRL: "迪士尼"
     };
     const DIR_OVERRIDE = {};
+    const CP_POINTS = [
+      { code: "HYW", name: "香園圍" },
+      { code: "HZM", name: "港珠澳大橋" },
+      { code: "LMC", name: "落馬洲" },
+      { code: "LSC", name: "落馬洲支線" },
+      { code: "LWS", name: "羅湖" },
+      { code: "MKT", name: "文錦渡" },
+      { code: "SBC", name: "深圳灣" },
+      { code: "STK", name: "沙頭角" }
+    ];
 
     const board = document.getElementById("board");
     const lastUpdate = document.getElementById("last-update");
