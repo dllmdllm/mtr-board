@@ -1131,9 +1131,14 @@
         });
       });
 
-      const results = await Promise.all(requests);
+      const [results, residentData, visitorData] = await Promise.all([
+        Promise.all(requests),
+        fetch(CP_RESIDENT_URL, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(CP_VISITOR_URL, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null)
+      ]);
       if (token !== refreshToken) return;
       const byKey = new Map(results.map(r => [r.key, r.data]));
+      renderControlPoints(residentData, visitorData);
       const now = new Date();
       const timeStr = now.toLocaleTimeString("zh-HK", { hour12: false });
 
