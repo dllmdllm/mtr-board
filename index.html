@@ -762,6 +762,7 @@
     const countdownEl = document.getElementById("countdown");
     const toggleButtons = Array.from(document.querySelectorAll(".toggle-btn"));
     const lineTabs = Array.from(document.querySelectorAll(".line-tab"));
+    const toggleGroup = document.querySelector(".toggle-group");
     let visibleCount = 4;
     let remaining = REFRESH_SECONDS;
     const rowState = new Map();
@@ -1214,6 +1215,9 @@
         const count = Number(btn.dataset.count);
         visibleCount = Number.isNaN(count) ? 1 : count;
         toggleButtons.forEach(b => b.classList.toggle("active", b === btn));
+        if (toggleGroup) {
+          toggleGroup.classList.toggle("has-active", toggleButtons.some(b => b.classList.contains("active")));
+        }
         refreshAll();
       });
     });
