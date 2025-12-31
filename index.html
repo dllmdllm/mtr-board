@@ -1214,7 +1214,6 @@
       const cards = visibleCards.length > 0
         ? visibleCards
         : Array.from(document.querySelectorAll(".station-card"));
-      prefillLoading(cards);
       remaining = REFRESH_SECONDS;
       countdownEl.textContent = remaining;
       countdownEl.classList.remove("blink");
