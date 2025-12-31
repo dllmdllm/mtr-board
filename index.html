@@ -1084,38 +1084,40 @@
 
     function renderControlPoints(residentData, visitorData) {
       if (!cpBoard) return;
-      const rows = CP_POINTS.map(point => {
-        const r = residentData?.[point.code];
-        const v = visitorData?.[point.code];
-        const arrR = r?.arrQueue ?? "--";
-        const depR = r?.depQueue ?? "--";
-        const arrV = v?.arrQueue ?? "--";
-        const depV = v?.depQueue ?? "--";
-        const dotR = queueDot(arrR);
-        const dotR2 = queueDot(depR);
-        const dotV = queueDot(arrV);
-        const dotV2 = queueDot(depV);
+      const makeRow = (label, data, isResident) => {
+        const cells = CP_POINTS.map(point => {
+          const entry = data?.[point.code];
+          const arr = entry?.arrQueue ?? "--";
+          const dep = entry?.depQueue ?? "--";
+          const dotA = queueDot(arr);
+          const dotD = queueDot(dep);
+          return `
+            <td><span class="cp-badge"><span class="cp-dot ${dotA}"></span>${arr}</span></td>
+            <td><span class="cp-badge"><span class="cp-dot ${dotD}"></span>${dep}</span></td>
+          `;
+        }).join("");
         return `
           <tr>
-            <td class="cp-label">${point.name}</td>
-            <td class="center"><span class="cp-badge"><span class="cp-dot ${dotR}"></span>${arrR}</span></td>
-            <td class="center"><span class="cp-badge"><span class="cp-dot ${dotR2}"></span>${depR}</span></td>
-            <td class="center"><span class="cp-badge"><span class="cp-dot ${dotV}"></span>${arrV}</span></td>
-            <td class="center"><span class="cp-badge"><span class="cp-dot ${dotV2}"></span>${depV}</span></td>
+            <td class="cp-row-label">${label}</td>
+            ${cells}
           </tr>
         `;
-      }).join("");
+      };
+      const rows = [
+        makeRow("香港居民", residentData, true),
+        makeRow("遊客", visitorData, false)
+      ].join("");
       cpBoard.innerHTML = `
         <div class="cp-card">
           <div class="cp-title">口岸狀態碼</div>
           <table class="cp-table">
             <thead>
               <tr>
-                <th>口岸</th>
-                <th class="center">市民到</th>
-                <th class="center">市民離</th>
-                <th class="center">遊客到</th>
-                <th class="center">遊客離</th>
+                <th rowspan="2">類別</th>
+                ${CP_POINTS.map(p => `<th colspan="2">${p.name}</th>`).join("")}
+              </tr>
+              <tr>
+                ${CP_POINTS.map(() => `<th>出境</th><th>入境</th>`).join("")}
               </tr>
             </thead>
             <tbody>${rows}</tbody>
