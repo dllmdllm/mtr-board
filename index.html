@@ -1048,6 +1048,7 @@
           changes.push({ card, display: "" });
           const renderMulti = () => {
             downList.innerHTML = "";
+            const frag = document.createDocumentFragment();
             groups.forEach(group => {
               const groupWrap = document.createElement("div");
               groupWrap.className = "xfr-group";
@@ -1121,8 +1122,9 @@
               }
               groupWrap.appendChild(lineRow);
 
-              downList.appendChild(groupWrap);
+              frag.appendChild(groupWrap);
             });
+            downList.appendChild(frag);
           };
           downCol.style.display = "";
           upCol.style.display = "";
