@@ -1064,6 +1064,13 @@
       visibleRows.forEach(updateRowCountdown);
     }
 
+    function queueDot(value) {
+      if (value === 0) return "green";
+      if (value === 1) return "yellow";
+      if (value === 2) return "red";
+      return "gray";
+    }
+
     function renderControlPoints(residentData, visitorData) {
       if (!cpBoard) return;
       const items = CP_POINTS.map(point => {
@@ -1073,12 +1080,13 @@
         const depR = r?.depQueue ?? "--";
         const arrV = v?.arrQueue ?? "--";
         const depV = v?.depQueue ?? "--";
+        const dotR = queueDot(arrR);
+        const dotV = queueDot(arrV);
         return `
           <div class="cp-item">
-            <span class="cp-code">${point.code}</span>
             <span class="cp-label">${point.name}</span>
-            <span>市民 ${arrR}/${depR}</span>
-            <span>訪客 ${arrV}/${depV}</span>
+            <span class="cp-badge"><span class="cp-dot ${dotR}"></span>市民 ${arrR}/${depR}</span>
+            <span class="cp-badge"><span class="cp-dot ${dotV}"></span>訪客 ${arrV}/${depV}</span>
           </div>
         `;
       }).join("");
