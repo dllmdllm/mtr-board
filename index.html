@@ -763,6 +763,9 @@
     const toggleButtons = Array.from(document.querySelectorAll(".toggle-btn"));
     const lineTabs = Array.from(document.querySelectorAll(".line-tab"));
     const toggleGroup = document.querySelector(".toggle-group");
+    if (toggleGroup) {
+      toggleGroup.classList.toggle("has-active", toggleButtons.some(b => b.classList.contains("active")));
+    }
     let visibleCount = 4;
     let remaining = REFRESH_SECONDS;
     const rowState = new Map();
