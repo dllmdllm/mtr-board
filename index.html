@@ -1126,6 +1126,10 @@
         ];
         return values.some(vv => vv === 0 || vv === 1 || vv === 2);
       });
+      if (visiblePoints.length === 0) {
+        cpBoard.innerHTML = "";
+        return;
+      }
       const makeRowFiltered = (label, data) => {
         const cells = visiblePoints.map(point => {
           const entry = data?.[point.code];
