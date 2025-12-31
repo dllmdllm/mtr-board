@@ -1117,25 +1117,6 @@
 
     function renderControlPoints(residentData, visitorData) {
       if (!cpBoard) return;
-      const makeRow = (label, data, isResident) => {
-        const cells = CP_POINTS.map(point => {
-          const entry = data?.[point.code];
-          const arr = entry?.arrQueue ?? "--";
-          const dep = entry?.depQueue ?? "--";
-          const dotA = queueDot(arr);
-          const dotD = queueDot(dep);
-          return `
-            <td><span class="cp-badge"><span class="cp-dot ${dotA}"></span></span></td>
-            <td><span class="cp-badge"><span class="cp-dot ${dotD}"></span></span></td>
-          `;
-        }).join("");
-        return `
-          <tr>
-            <td class="cp-row-label">${label}</td>
-            ${cells}
-          </tr>
-        `;
-      };
       const visiblePoints = CP_POINTS.filter(point => {
         const r = residentData?.[point.code];
         const v = visitorData?.[point.code];
@@ -1181,10 +1162,10 @@
             <thead>
               <tr>
                 <th rowspan="2"></th>
-                ${CP_POINTS.map(p => `<th colspan="2">${p.name}</th>`).join("")}
+                ${visiblePoints.map(p => `<th colspan="2">${p.name}</th>`).join("")}
               </tr>
               <tr>
-                ${CP_POINTS.map(() => `<th>出境</th><th>入境</th>`).join("")}
+                ${visiblePoints.map(() => `<th>出境</th><th>入境</th>`).join("")}
               </tr>
             </thead>
             <tbody>${rows}</tbody>
