@@ -1132,10 +1132,12 @@
         });
       });
 
+      const proxyResident = `${CP_PROXY_BASE}?target=${encodeURIComponent(CP_RESIDENT_URL)}`;
+      const proxyVisitor = `${CP_PROXY_BASE}?target=${encodeURIComponent(CP_VISITOR_URL)}`;
       const [results, residentData, visitorData] = await Promise.all([
         Promise.all(requests),
-        fetch(CP_RESIDENT_URL, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch(CP_VISITOR_URL, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null)
+        fetch(proxyResident, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(proxyVisitor, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null)
       ]);
       if (token !== refreshToken) return;
       const byKey = new Map(results.map(r => [r.key, r.data]));
