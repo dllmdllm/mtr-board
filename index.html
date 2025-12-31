@@ -1093,8 +1093,12 @@
         const dotV = queueDot(arrV);
         return `
           <tr>
-            <td class="cp-label">${point.name}</td>
+            <td class="cp-label" rowspan="2">${point.name}</td>
+            <td>市民(到/離)</td>
             <td><span class="cp-badge"><span class="cp-dot ${dotR}"></span>${arrR}/${depR}</span></td>
+          </tr>
+          <tr class="cp-sub">
+            <td>訪客(到/離)</td>
             <td><span class="cp-badge"><span class="cp-dot ${dotV}"></span>${arrV}/${depV}</span></td>
           </tr>
         `;
@@ -1106,8 +1110,8 @@
             <thead>
               <tr>
                 <th>口岸</th>
-                <th>市民(到/離)</th>
-                <th>訪客(到/離)</th>
+                <th>類別</th>
+                <th>狀態碼</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
