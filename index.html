@@ -1098,12 +1098,13 @@
         const dotV = queueDot(arrV);
         return `
           <tr>
-            <td class="cp-label" rowspan="2">${point.name}</td>
+            <td class="cp-label">${point.name}</td>
             <td>市民</td>
             <td class="center"><span class="cp-badge"><span class="cp-dot ${dotR}"></span>${arrR}</span></td>
             <td class="center"><span class="cp-badge"><span class="cp-dot ${dotR}"></span>${depR}</span></td>
           </tr>
           <tr class="cp-sub">
+            <td class="cp-label">${point.name}</td>
             <td>遊客</td>
             <td class="center"><span class="cp-badge"><span class="cp-dot ${dotV}"></span>${arrV}</span></td>
             <td class="center"><span class="cp-badge"><span class="cp-dot ${dotV}"></span>${depV}</span></td>
