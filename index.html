@@ -1044,6 +1044,32 @@
       visibleRows.forEach(updateRowCountdown);
     }
 
+    function renderControlPoints(residentData, visitorData) {
+      if (!cpBoard) return;
+      const items = CP_POINTS.map(point => {
+        const r = residentData?.[point.code];
+        const v = visitorData?.[point.code];
+        const arrR = r?.arrQueue ?? "--";
+        const depR = r?.depQueue ?? "--";
+        const arrV = v?.arrQueue ?? "--";
+        const depV = v?.depQueue ?? "--";
+        return `
+          <div class="cp-item">
+            <span class="cp-code">${point.code}</span>
+            <span class="cp-label">${point.name}</span>
+            <span>市民 ${arrR}/${depR}</span>
+            <span>訪客 ${arrV}/${depV}</span>
+          </div>
+        `;
+      }).join("");
+      cpBoard.innerHTML = `
+        <div class="cp-card">
+          <div class="cp-title">口岸狀態碼</div>
+          <div class="cp-grid">${items}</div>
+        </div>
+      `;
+    }
+
     function prefillLoading(cards) {
       cards.forEach(card => {
         if (!shouldShowCard(card)) return;
