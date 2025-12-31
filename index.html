@@ -982,7 +982,6 @@
       const cards = visibleCards.length > 0
         ? visibleCards
         : Array.from(document.querySelectorAll(".station-card"));
-      lastUpdate.textContent = "更新中...";
       remaining = REFRESH_SECONDS;
       countdownEl.textContent = remaining;
 
