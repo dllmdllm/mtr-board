@@ -1136,9 +1136,36 @@
           </tr>
         `;
       };
+      const visiblePoints = CP_POINTS.filter(point => {
+        const r = residentData?.[point.code];
+        const v = visitorData?.[point.code];
+        const values = [
+          r?.arrQueue, r?.depQueue, v?.arrQueue, v?.depQueue
+        ];
+        return values.some(vv => vv === 0 || vv === 1 || vv === 2);
+      });
+      const makeRowFiltered = (label, data) => {
+        const cells = visiblePoints.map(point => {
+          const entry = data?.[point.code];
+          const arr = entry?.arrQueue ?? "--";
+          const dep = entry?.depQueue ?? "--";
+          const dotA = queueDot(arr);
+          const dotD = queueDot(dep);
+          return `
+            <td><span class="cp-badge"><span class="cp-dot ${dotA}"></span></span></td>
+            <td><span class="cp-badge"><span class="cp-dot ${dotD}"></span></span></td>
+          `;
+        }).join("");
+        return `
+          <tr>
+            <td class="cp-row-label">${label}</td>
+            ${cells}
+          </tr>
+        `;
+      };
       const rows = [
-        makeRow("香港居民", residentData, true),
-        makeRow("遊客", visitorData, false)
+        makeRowFiltered("香港居民", residentData),
+        makeRowFiltered("遊客", visitorData)
       ].join("");
       cpBoard.innerHTML = `
         <div class="cp-card">
