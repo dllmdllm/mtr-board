@@ -982,6 +982,31 @@
       visibleRows.forEach(updateRowCountdown);
     }
 
+    function prefillLoading(cards) {
+      cards.forEach(card => {
+        if (!shouldShowCard(card)) return;
+        const refs = card._refs || {};
+        const downList = refs.downList || card.querySelector('[data-dir="DOWN"] .train-list');
+        const upList = refs.upList || card.querySelector('[data-dir="UP"] .train-list');
+        const upCol = refs.upCol || upList.closest(".dir-col");
+        if (activeLine === "XFR") {
+          if (downList && downList.childElementCount === 0) {
+            downList.innerHTML = "";
+            downList.appendChild(statusRow("更新中"));
+          }
+          if (upCol) upCol.style.display = "none";
+          return;
+        }
+        const code = card.dataset.code || "";
+        if (downList && downList.childElementCount === 0) {
+          fillList(downList, [], "更新中", code, "DOWN");
+        }
+        if (upList && upList.childElementCount === 0) {
+          fillList(upList, [], "更新中", code, "UP");
+        }
+      });
+    }
+
     async function fetchStation(line, code) {
       const url = `${API_BASE}?line=${line}&sta=${code}&lang=TC`;
       const res = await fetch(url, { cache: "no-store" });
@@ -995,6 +1020,7 @@
       const cards = visibleCards.length > 0
         ? visibleCards
         : Array.from(document.querySelectorAll(".station-card"));
+      prefillLoading(cards);
       remaining = REFRESH_SECONDS;
       countdownEl.textContent = remaining;
       countdownEl.classList.remove("blink");
