@@ -951,6 +951,7 @@
         card.style.animationDelay = `${idx * 0.02}s`;
         board.appendChild(card);
       });
+      if (cpBoard) board.appendChild(cpBoard);
       applyLineFilter();
     }
 
