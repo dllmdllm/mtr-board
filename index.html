@@ -766,6 +766,7 @@
     let activeLine = localStorage.getItem(ACTIVE_LINE_KEY) || "EAL";
     let visibleCards = [];
     let visibleRows = [];
+    let refreshToken = 0;
 
     function hexToRgb(hex) {
       const cleaned = hex.replace("#", "");
@@ -977,6 +978,7 @@
     }
 
     async function refreshAll() {
+      const token = ++refreshToken;
       const cards = visibleCards.length > 0
         ? visibleCards
         : Array.from(document.querySelectorAll(".station-card"));
@@ -1004,6 +1006,7 @@
       });
 
       const results = await Promise.all(requests);
+      if (token !== refreshToken) return;
       const byKey = new Map(results.map(r => [r.key, r.data]));
       const now = new Date();
       const timeStr = now.toLocaleTimeString("zh-HK", { hour12: false });
