@@ -990,6 +990,7 @@
     }
 
     async function refreshAll() {
+      board.classList.add("is-refreshing");
       const token = ++refreshToken;
       const cards = visibleCards.length > 0
         ? visibleCards
@@ -1217,6 +1218,9 @@
 
       lastUpdate.textContent = timeStr;
       updateAllRows();
+      requestAnimationFrame(() => {
+        board.classList.remove("is-refreshing");
+      });
     }
 
     refreshBtn.addEventListener("click", refreshAll);
