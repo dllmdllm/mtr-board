@@ -419,7 +419,7 @@
 
     .cp-item {
       display: grid;
-      grid-template-columns: auto 1fr auto auto;
+      grid-template-columns: 1fr auto auto;
       gap: 6px;
       align-items: center;
       padding: 2px 0;
@@ -433,6 +433,25 @@
     .cp-code {
       font-weight: 700;
     }
+
+    .cp-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .cp-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .cp-dot.green { background: #16c784; }
+    .cp-dot.yellow { background: #f5b700; }
+    .cp-dot.red { background: #ef476f; }
+    .cp-dot.gray { background: #9aa4ad; }
 
     .cp-label {
       opacity: 0.75;
