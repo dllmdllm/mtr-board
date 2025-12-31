@@ -1071,7 +1071,7 @@
                 const col = document.createElement("div");
                 col.className = "xfr-col";
                 if (trains.length === 0) {
-                  col.appendChild(statusRow(statusText || "暫無班次"));
+                  if (statusText) col.appendChild(statusRow(statusText));
                   return col;
                 }
                 const shownTrains = trains.slice(0, visibleCount);
@@ -1099,16 +1099,21 @@
                 lineRow.appendChild(makeCol("DOWN", group.down));
                 lineRow.appendChild(makeCol("UP", group.up));
               } else if (downHas) {
-                lineRow.style.gridTemplateColumns = "minmax(0, 1fr)";
-                lineRow.appendChild(makeCol("DOWN", group.down));
+                const downColLocal = makeCol("DOWN", group.down, "");
+                const upColLocal = makeCol("UP", [], "");
+                upColLocal.style.display = "none";
+                lineRow.appendChild(downColLocal);
+                lineRow.appendChild(upColLocal);
               } else if (upHas) {
-                lineRow.style.gridTemplateColumns = "minmax(0, 1fr)";
-                lineRow.appendChild(makeCol("UP", group.up));
+                const downColLocal = makeCol("DOWN", [], "");
+                const upColLocal = makeCol("UP", group.up, "");
+                downColLocal.style.display = "none";
+                lineRow.appendChild(downColLocal);
+                lineRow.appendChild(upColLocal);
               } else {
                 groupWrap.classList.add("xfr-empty");
                 lineRow.appendChild(makeCol("DOWN", [], "暫無班次"));
                 lineRow.appendChild(makeCol("UP", [], "暫無班次"));
-                lineRow.style.gridTemplateColumns = "minmax(0, 1fr) minmax(0, 1fr)";
               }
               groupWrap.appendChild(lineRow);
 
