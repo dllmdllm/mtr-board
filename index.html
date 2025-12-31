@@ -1220,6 +1220,7 @@
     function tickCountdown() {
       remaining = Math.max(0, remaining - 1);
       countdownEl.textContent = remaining;
+      countdownEl.classList.toggle("blink", remaining <= 5);
       updateAllRows();
       if (remaining === 0) {
         refreshAll();
