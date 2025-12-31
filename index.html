@@ -410,6 +410,22 @@
       margin-bottom: 6px;
     }
 
+    .cp-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      justify-content: center;
+      font-size: 12px;
+      margin-bottom: 8px;
+      opacity: 0.85;
+    }
+
+    .cp-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     .cp-table {
       width: 100%;
       border-collapse: collapse;
@@ -1116,6 +1132,13 @@
       cpBoard.innerHTML = `
         <div class="cp-card">
           <div class="cp-title">陸路邊境管制站等候時間</div>
+          <div class="cp-legend">
+            <span class="cp-legend-item"><span class="cp-dot green"></span>正常</span>
+            <span class="cp-legend-item"><span class="cp-dot yellow"></span>繁忙</span>
+            <span class="cp-legend-item"><span class="cp-dot red"></span>非常繁忙</span>
+            <span class="cp-legend-item"><span class="cp-dot blue"></span>系統維護</span>
+            <span class="cp-legend-item"><span class="cp-dot gray"></span>非服務時間</span>
+          </div>
           <table class="cp-table">
             <thead>
               <tr>
