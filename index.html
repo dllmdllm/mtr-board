@@ -1229,6 +1229,8 @@
       remaining = Math.max(0, remaining - 1);
       countdownEl.textContent = remaining;
       countdownEl.classList.toggle("blink", remaining <= 5);
+      const countdownPill = document.getElementById("countdown-pill");
+      if (countdownPill) countdownPill.classList.toggle("blink", remaining <= 5);
       updateAllRows();
       if (remaining === 0) {
         refreshAll();
