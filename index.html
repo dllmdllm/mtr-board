@@ -970,6 +970,7 @@
         card.classList.toggle("xfr-mode", activeLine === "XFR" && show);
         if (show) visibleCards.push(card);
       });
+      if (visibleCards.length > 0) prefillLoading(visibleCards);
     }
 
     function updateAllRows() {
@@ -990,20 +991,17 @@
         const upList = refs.upList || card.querySelector('[data-dir="UP"] .train-list');
         const upCol = refs.upCol || upList.closest(".dir-col");
         if (activeLine === "XFR") {
-          if (downList && downList.childElementCount === 0) {
+          if (downList) {
             downList.innerHTML = "";
             downList.appendChild(statusRow("更新中"));
           }
+          if (upList) upList.innerHTML = "";
           if (upCol) upCol.style.display = "none";
           return;
         }
         const code = card.dataset.code || "";
-        if (downList && downList.childElementCount === 0) {
-          fillList(downList, [], "更新中", code, "DOWN");
-        }
-        if (upList && upList.childElementCount === 0) {
-          fillList(upList, [], "更新中", code, "UP");
-        }
+        if (downList) fillList(downList, [], "更新中", code, "DOWN");
+        if (upList) fillList(upList, [], "更新中", code, "UP");
       });
     }
 
