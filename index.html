@@ -1242,8 +1242,12 @@
       const proxyVisitor = `${CP_PROXY_BASE}?target=${encodeURIComponent(CP_VISITOR_URL)}`;
       const [results, residentData, visitorData] = await Promise.all([
         Promise.all(requests),
-        fetch(proxyResident, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch(proxyVisitor, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null)
+        activeLine === "EAL"
+          ? fetch(proxyResident, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null)
+          : Promise.resolve(null),
+        activeLine === "EAL"
+          ? fetch(proxyVisitor, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null)
+          : Promise.resolve(null)
       ]);
       if (token !== refreshToken) {
         board.classList.remove("is-refreshing");
