@@ -1063,6 +1063,9 @@
         card.classList.toggle("xfr-mode", activeLine === "XFR" && show);
         if (show) visibleCards.push(card);
       });
+      if (cpBoard) {
+        cpBoard.style.display = activeLine === "EAL" ? "" : "none";
+      }
       if (visibleCards.length > 0) prefillLoading(visibleCards);
     }
 
