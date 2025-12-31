@@ -439,6 +439,11 @@
       padding-top: 0;
     }
 
+    .cp-table th.center,
+    .cp-table td.center {
+      text-align: center;
+    }
+
     .cp-code {
       font-weight: 700;
     }
@@ -1094,12 +1099,14 @@
         return `
           <tr>
             <td class="cp-label" rowspan="2">${point.name}</td>
-            <td>市民(到/離)</td>
-            <td><span class="cp-badge"><span class="cp-dot ${dotR}"></span>${arrR}/${depR}</span></td>
+            <td>市民</td>
+            <td class="center"><span class="cp-badge"><span class="cp-dot ${dotR}"></span>${arrR}</span></td>
+            <td class="center"><span class="cp-badge"><span class="cp-dot ${dotR}"></span>${depR}</span></td>
           </tr>
           <tr class="cp-sub">
-            <td>訪客(到/離)</td>
-            <td><span class="cp-badge"><span class="cp-dot ${dotV}"></span>${arrV}/${depV}</span></td>
+            <td>遊客</td>
+            <td class="center"><span class="cp-badge"><span class="cp-dot ${dotV}"></span>${arrV}</span></td>
+            <td class="center"><span class="cp-badge"><span class="cp-dot ${dotV}"></span>${depV}</span></td>
           </tr>
         `;
       }).join("");
@@ -1111,7 +1118,8 @@
               <tr>
                 <th>口岸</th>
                 <th>類別</th>
-                <th>狀態碼</th>
+                <th class="center">到港</th>
+                <th class="center">離港</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
