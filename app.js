@@ -11,9 +11,13 @@ if (toggleGroup) {
 }
 let visibleCount = 4;
 let remaining = REFRESH_SECONDS;
-const rowState = new Map();
+const stationStates = new Map();
+const STALE_AFTER_MS = 90000;
+let activeRefresh = null;
+let queueController = null;
 const ACTIVE_LINE_KEY = "activeLine";
 let activeLine = localStorage.getItem(ACTIVE_LINE_KEY) || "EAL";
+if (activeLine !== "XFR" && !LINE_NAMES[activeLine]) activeLine = "EAL";
 let visibleCards = [];
 let visibleRows = [];
 let refreshToken = 0;
@@ -94,33 +98,63 @@ function colorForPlat(plat) {
   return colors[(Math.abs(num) - 1) % colors.length];
 }
 
-function statusRow(text) {
+function statusRow(text, serviceUrl) {
   const row = document.createElement("div");
   row.className = "train-row";
   row.dataset.status = "status";
   row.innerHTML = `
-    <span class="train-dest">${text}</span>
+    <span class="train-dest">${escapeHtml(text)}</span>
     <span class="train-right"><span class="train-mins"></span><span class="train-hint"></span></span>
   `;
+  if (serviceUrl) {
+    try {
+      const url = new URL(serviceUrl);
+      if (url.protocol === "https:" && (url.hostname === "mtr.com.hk" || url.hostname.endsWith(".mtr.com.hk"))) {
+        const link = document.createElement("a");
+        link.href = url.href;
+        link.textContent = "服務安排";
+        link.className = "service-link";
+        row.appendChild(link);
+      }
+    } catch { /* Ignore invalid service links; keep the alert message. */ }
+  }
   return row;
 }
 
 function parseTimeToMs(value) {
-  if (!value || value === "-") return NaN;
-  const iso = value.replace(" ", "T");
-  const ms = Date.parse(iso);
-  return Number.isNaN(ms) ? NaN : ms;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) return NaN;
+  // The API's full wall-clock date is Hong Kong time, including after midnight.
+  const ms = Date.parse(`${value.replace(" ", "T")}+08:00`);
+  if (!Number.isFinite(ms)) return NaN;
+  const roundTrip = new Date(ms + 8 * 3600000).toISOString().slice(0, 19).replace("T", " ");
+  return roundTrip === value ? ms : NaN;
 }
-
 
 function computeTargetMs(train) {
-  const byTime = parseTimeToMs(train.time);
-  if (!Number.isNaN(byTime)) return byTime;
-  const ttnt = Number(train.ttnt);
-  if (!Number.isNaN(ttnt)) return Date.now() + ttnt * 60 * 1000;
-  return NaN;
+  return parseTimeToMs(train.time);
 }
 
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[ch]));
+}
+
+function hongKongTime(ms) {
+  return new Date(ms).toLocaleTimeString("zh-HK", { hour12: false, timeZone: "Asia/Hong_Kong" });
+}
+
+function classifySchedule(data, key, error, now = Date.now()) {
+  if (error) return { kind: "error", text: typeof navigator !== "undefined" && navigator.onLine === false ? "離線，請檢查網絡" : "更新失敗，請重試" };
+  if (!data) return { kind: "loading", text: "更新中" };
+  if (Number(data.status) === 0) return { kind: "disruption", text: data.message || "服務異常", url: data.url };
+  const entry = data.data?.[key];
+  const sourceMs = parseTimeToMs(entry?.curr_time || entry?.sys_time || data.curr_time || data.sys_time);
+  if (Number(data.status) !== 1 || !entry || !Number.isFinite(sourceMs) || (!Array.isArray(entry.UP) && !Array.isArray(entry.DOWN))) {
+    return { kind: "unavailable", text: "暫未能提供列車資料" };
+  }
+  if (now - sourceMs > STALE_AFTER_MS || sourceMs - now > STALE_AFTER_MS) return { kind: "stale", text: "資料已過期，請重試", sourceMs };
+  const validTrains = trains => (Array.isArray(trains) ? trains : []).filter(t => t && Number.isFinite(parseTimeToMs(t.time)));
+  return { kind: "ready", sourceMs, down: validTrains(entry.DOWN), up: validTrains(entry.UP), text: data.isdelay === "Y" ? "列車延誤" : "" };
+}
 
 function formatCountdown(sec) {
   if (sec <= -GRACE_AFTER_ZERO) return "已開";
@@ -140,32 +174,22 @@ function trainRow(train, key) {
     return row;
   }
   const destName = CODE_TO_NAME.get(train.dest) || train.dest || "--";
-  const mins = train.ttnt ?? "--";
+  const mins = formatCountdown(Math.floor((computeTargetMs(train) - Date.now()) / 1000));
+  const route = train.route === "RAC" ? "（經馬場）" : "";
+  const event = train.timetype === "D" ? "開出" : "到站";
   const plat = train.plat ?? "--";
   const time = train.time ?? "--";
   const color = colorForPlat(plat);
-  if (color) row.style.color = color;
+  if (color) row.style.setProperty("--platform-color", color);
   row.dataset.key = key;
   const targetMs = computeTargetMs(train);
   if (!Number.isNaN(targetMs)) row.dataset.target = String(targetMs);
-  row.title = `P${plat} | 到站 ${time}`;
+  row.title = `P${plat} | ${event} ${time}（香港時間）${route}`;
   row.innerHTML = `
-    <span class="train-dest"><span class="plat-num">${plat}</span>${destName}</span>
-    <span class="train-right"><span class="train-mins">${mins} 分</span><span class="train-hint"></span></span>
+    <span class="train-dest"><span class="plat-num">${escapeHtml(plat)}</span>${escapeHtml(destName)}${route}</span>
+    <span class="train-right"><span class="train-mins">${mins}</span><span class="train-hint"></span></span>
   `;
   return row;
-}
-
-function fillList(listEl, trains, statusText, stationCode, direction) {
-  listEl.innerHTML = "";
-  if (!Array.isArray(trains) || trains.length === 0) {
-    listEl.appendChild(statusRow(statusText || "暫無班次"));
-    return;
-  }
-  trains.slice(0, visibleCount).forEach((train, idx) => {
-    const key = `${stationCode}-${direction}-${idx}`;
-    listEl.appendChild(trainRow(train, key));
-  });
 }
 
 function updateRowCountdown(row) {
@@ -173,24 +197,9 @@ function updateRowCountdown(row) {
   const targetMs = Number(row.dataset.target);
   if (!targetMs) return;
   const remainingSec = Math.floor((targetMs - Date.now()) / 1000);
-  const key = row.dataset.key || "";
-  const state = rowState.get(key) || { displaySec: remainingSec, delayHint: false };
-  let displaySec = state.displaySec;
-  if (Number.isNaN(displaySec)) displaySec = remainingSec;
-  const diff = remainingSec - displaySec;
-  if (diff > NORMAL_DIFF) {
-    displaySec = displaySec + Math.min(MAX_SLEW, diff);
-  } else if (diff < -MAX_SLEW) {
-    displaySec = displaySec + Math.max(-MAX_SLEW, diff);
-  } else {
-    displaySec = remainingSec;
-  }
-  state.displaySec = displaySec;
-  rowState.set(key, state);
-
   const minsEl = row.querySelector(".train-mins");
   const hintEl = row.querySelector(".train-hint");
-  const label = formatCountdown(displaySec);
+  const label = formatCountdown(remainingSec);
   const shouldBlink = label === "就到" || label === "已開";
   if (minsEl) {
     minsEl.textContent = label;
@@ -200,7 +209,11 @@ function updateRowCountdown(row) {
 }
 
 function applyLineFilter() {
-  lineTabs.forEach(btn => btn.classList.toggle("active", btn.dataset.line === activeLine));
+  lineTabs.forEach(btn => {
+    const selected = btn.dataset.line === activeLine;
+    btn.classList.toggle("active", selected);
+    btn.setAttribute("aria-pressed", String(selected));
+  });
   visibleCards = [];
   visibleRows = [];
   document.querySelectorAll(".station-card").forEach(card => {
@@ -221,6 +234,10 @@ function updateAllRows() {
     return;
   }
   visibleRows.forEach(updateRowCountdown);
+}
+
+function queueLabel(value) {
+  return ({0: "正常", 1: "繁忙", 2: "非常繁忙", 4: "系統維護", 99: "非服務時間"})[value] || "資料未能提供";
 }
 
 function queueDot(value) {
@@ -273,8 +290,8 @@ function renderControlPoints(residentData, visitorData) {
       const dotA = queueDotClass(arr);
       const dotD = queueDotClass(dep);
       return `
-        <td><span class="cp-badge"><span class="cp-dot ${dotA}"></span></span></td>
-        <td><span class="cp-badge"><span class="cp-dot ${dotD}"></span></span></td>
+        <td><span class="cp-badge"><span class="cp-dot ${dotA}" role="img" aria-label="${queueLabel(arr)}" title="${queueLabel(arr)}"></span></span></td>
+        <td><span class="cp-badge"><span class="cp-dot ${dotD}" role="img" aria-label="${queueLabel(dep)}" title="${queueLabel(dep)}"></span></span></td>
       `;
     }).join("");
     return `
@@ -299,6 +316,7 @@ function renderControlPoints(residentData, visitorData) {
         <span class="cp-legend-item"><span class="cp-dot gray"></span>非服務時間</span>
       </div>
       <table class="cp-table">
+      <caption>檢查時間 ${hongKongTime(Date.now())}${residentData === null || visitorData === null ? "（部分資料載入失敗）" : ""}</caption>
         <thead>
           <tr>
             <th rowspan="2"></th>
@@ -314,302 +332,139 @@ function renderControlPoints(residentData, visitorData) {
   `;
 }
 
-function prefillLoading(cards) {
-  cards.forEach(card => {
-    if (!shouldShowCard(card)) return;
-    const refs = card._refs || {};
-    const downList = refs.downList || card.querySelector('[data-dir="DOWN"] .train-list');
-    const upList = refs.upList || card.querySelector('[data-dir="UP"] .train-list');
-    const upCol = refs.upCol || upList.closest(".dir-col");
-    if (activeLine === "XFR") {
-      if (downList) {
-        downList.innerHTML = "";
-        downList.appendChild(statusRow("更新中"));
+function renderSchedules() {
+  visibleRows = [];
+  const readyTimes = [];
+  let incomplete = false;
+  visibleCards.forEach(card => {
+    const { line, code, name } = card.dataset;
+    const lines = activeLine === "XFR" ? INTERCHANGE_LINES[name] || [line] : [line];
+    const { downList, upList, downCol, upCol } = card._refs;
+    downList.innerHTML = "";
+    upList.innerHTML = "";
+    card.style.display = "";
+    downCol.style.display = "";
+    upCol.style.display = activeLine === "XFR" ? "none" : "";
+    lines.forEach(lineKey => {
+      const key = `${lineKey}-${code}`;
+      const saved = stationStates.get(key);
+      const state = classifySchedule(saved?.data, key, saved?.error);
+      if (state.kind === "ready") readyTimes.push(state.sourceMs);
+      else incomplete = true;
+      let down = downList, up = upList;
+      if (activeLine === "XFR") {
+        const group = document.createElement("div");
+        group.className = "xfr-group";
+        group.style.setProperty("--line-color", LINE_COLORS[lineKey]);
+        group.style.setProperty("--line-color-rgb", hexToRgb(LINE_COLORS[lineKey]));
+        const heading = statusRow(LINE_NAMES[lineKey]);
+        heading.classList.add("xfr-header");
+        group.appendChild(heading);
+        const pair = document.createElement("div");
+        pair.className = "xfr-pair";
+        down = document.createElement("div"); up = document.createElement("div");
+        down.className = up.className = "xfr-col";
+        pair.appendChild(down); pair.appendChild(up);
+        group.appendChild(pair); downList.appendChild(group);
       }
-      if (upList) upList.innerHTML = "";
-      if (upCol) upCol.style.display = "none";
-      return;
-    }
-    const code = card.dataset.code || "";
-    if (downList) fillList(downList, [], "更新中", code, "DOWN");
-    if (upList) fillList(upList, [], "更新中", code, "UP");
+      if (state.kind !== "ready") {
+        down.appendChild(statusRow(state.text, state.url));
+        if (activeLine === "XFR") up.style.display = "none";
+        else up.appendChild(statusRow(state.text, state.url));
+        return;
+      }
+      if (state.text) down.appendChild(statusRow(state.text, state.url));
+      const addTrains = (list, trains, dir) => {
+        if (!trains.length) list.appendChild(statusRow("暫無班次"));
+        trains.slice(0, visibleCount).forEach(train => {
+          // Each row reads its own exact ETA; no countdown state survives replacement.
+          const row = trainRow(train, `${key}-${dir}-${train.time}-${train.dest}-${train.plat}`);
+          list.appendChild(row); visibleRows.push(row);
+        });
+      };
+      addTrains(down, state.down, "DOWN");
+      addTrains(up, state.up, "UP");
+      if (state.down.length && !state.up.length) {
+        if (activeLine === "XFR") up.style.display = "none"; else upCol.style.display = "none";
+      } else if (state.up.length && !state.down.length && !state.text) {
+        if (activeLine === "XFR") down.style.display = "none"; else downCol.style.display = "none";
+      }
+      if (lineKey === "EAL" && code === "RAC" && !state.down.length && !state.up.length) card.style.display = "none";
+    });
   });
+  const oldest = readyTimes.length ? Math.min(...readyTimes) : null;
+  lastUpdate.textContent = oldest === null ? (incomplete ? "資料未更新" : "--:--:--") : `${incomplete ? "部分 " : ""}${hongKongTime(oldest)}`;
+  lastUpdate.title = "目前可用列車資料的最早來源時間（香港時間）；口岸資料獨立更新";
+  updateAllRows();
 }
 
 async function refreshAll() {
   if (document.hidden) return;
-  board.classList.add("is-refreshing");
+  if (activeRefresh?.line === activeLine) return activeRefresh.promise;
+  activeRefresh?.controller.abort();
+  queueController?.abort();
+  const controller = new AbortController();
   const token = ++refreshToken;
-  const cards = visibleCards.length > 0
-    ? visibleCards
-    : Array.from(document.querySelectorAll(".station-card"));
-  remaining = REFRESH_SECONDS;
-  countdownEl.textContent = remaining;
-  countdownEl.classList.remove("blink");
-  const countdownPill = document.getElementById("countdown-pill");
-  if (countdownPill) countdownPill.classList.remove("blink");
-
-  const requestKeys = new Set();
-  const requestItems = [];
-  cards.forEach(card => {
-    const line = card.dataset.line || "EAL";
-    const code = card.dataset.code;
-    const name = card.dataset.name || "";
-    const linesToShow = activeLine === "XFR" ? (INTERCHANGE_LINES[name] || [line]) : [line];
-    linesToShow.forEach(lineKey => {
-      const key = `${lineKey}-${code}`;
-      if (requestKeys.has(key)) return;
-      requestKeys.add(key);
-      requestItems.push({ key, line: lineKey, code });
+  const line = activeLine;
+  const requestItems = new Map();
+  visibleCards.forEach(card => {
+    const lines = line === "XFR" ? INTERCHANGE_LINES[card.dataset.name] || [card.dataset.line] : [card.dataset.line];
+    lines.forEach(lineKey => {
+      const key = `${lineKey}-${card.dataset.code}`;
+      requestItems.set(key, { key, line: lineKey, code: card.dataset.code });
     });
   });
-
-  const [results, cpQueues] = await Promise.all([
-    runLimited(requestItems, item =>
-      fetchStationSchedule(item.line, item.code)
-        .then(data => ({ key: item.key, data, error: null }))
-        .catch(error => ({ key: item.key, data: null, error }))
-    ),
-    activeLine === "EAL"
-      ? fetchControlPointQueues().catch(err => {
-          console.error("Control point fetch failed:", err);
-          showControlPointError();
-          return { residentData: null, visitorData: null };
-        })
-      : Promise.resolve({ residentData: null, visitorData: null })
-  ]);
-  if (token !== refreshToken) {
-    board.classList.remove("is-refreshing");
-    return;
+  board.classList.add("is-refreshing");
+  renderSchedules();
+  if (line === "EAL") {
+    if (cpBoard) cpBoard.textContent = "口岸資料更新中";
+    queueController = new AbortController();
+    const queueSignal = queueController.signal;
+    fetchControlPointQueues(queueSignal).then(queues => {
+      if (token !== refreshToken || queueSignal.aborted) return;
+      renderControlPoints(queues.residentData, queues.visitorData);
+    }).catch(() => { if (token === refreshToken && !queueSignal.aborted) showControlPointError(); });
   }
-  const byKey = new Map(results.map(r => [r.key, r.data]));
-  const errorKeys = new Set(results.filter(r => r.error).map(r => r.key));
-  if (activeLine === "EAL") {
-    renderControlPoints(cpQueues.residentData, cpQueues.visitorData);
-  }
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString("zh-HK", { hour12: false });
-
-  const changes = [];
-  visibleRows = [];
-  cards.forEach(card => {
-    const line = card.dataset.line || "EAL";
-    const code = card.dataset.code;
-    if (!shouldShowCard(card)) {
-      changes.push({ card, display: "none" });
-      return;
-    }
-    const name = card.dataset.name || "";
-    const linesToShow = activeLine === "XFR" ? (INTERCHANGE_LINES[name] || [line]) : [line];
-    const groups = linesToShow.map(lineKey => {
-      const data = byKey.get(`${lineKey}-${code}`);
-      const entry = data?.data?.[`${lineKey}-${code}`];
-      const down = (entry?.DOWN || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
-      const up = (entry?.UP || []).filter(t => t && t.valid === "Y" && t.ttnt !== "-" && t.time && t.time !== "-");
-      return { lineKey, down, up, ok: !!entry, failed: errorKeys.has(`${lineKey}-${code}`) };
-    });
-    const refs = card._refs || {};
-    const downList = refs.downList || card.querySelector('[data-dir="DOWN"] .train-list');
-    const upList = refs.upList || card.querySelector('[data-dir="UP"] .train-list');
-    const downCol = refs.downCol || downList.closest(".dir-col");
-    const upCol = refs.upCol || upList.closest(".dir-col");
-
-    if (activeLine === "XFR") {
-      changes.push({ card, display: "" });
-      const renderMulti = () => {
-        downList.innerHTML = "";
-        const frag = document.createDocumentFragment();
-        groups.forEach(group => {
-          const groupWrap = document.createElement("div");
-          groupWrap.className = "xfr-group";
-          groupWrap.style.setProperty("--line-color", LINE_COLORS[group.lineKey] || "#53B7E8");
-          groupWrap.style.setProperty("--line-color-rgb", hexToRgb(LINE_COLORS[group.lineKey] || "#53B7E8"));
-
-          const downHas = group.down.length > 0;
-          const upHas = group.up.length > 0;
-          if (downHas || upHas || !group.ok) {
-            const header = document.createElement("div");
-            header.className = "train-row xfr-header";
-            header.dataset.status = "status";
-            header.style.color = LINE_COLORS[group.lineKey] || "#53B7E8";
-            header.innerHTML = `
-              <span class="train-dest">${LINE_NAMES[group.lineKey] || group.lineKey}</span>
-              <span class="train-right"><span class="train-mins"></span><span class="train-hint"></span></span>
-            `;
-            groupWrap.appendChild(header);
-          }
-
-          const lineRow = document.createElement("div");
-          lineRow.className = "xfr-pair";
-
-          const makeCol = (dir, trains, statusText) => {
-            const col = document.createElement("div");
-            col.className = "xfr-col";
-            if (trains.length === 0) {
-              if (statusText) col.appendChild(statusRow(statusText));
-              return col;
-            }
-            const shownTrains = trains.slice(0, visibleCount);
-            shownTrains.forEach((train, idx) => {
-              const key = `${group.lineKey}-${code}-${dir}-${idx}`;
-              col.appendChild(trainRow(train, key));
-            });
-            const padCount = Math.max(0, visibleCount - shownTrains.length);
-            for (let i = 0; i < padCount; i += 1) {
-              const spacer = document.createElement("div");
-              spacer.className = "train-row xfr-pad";
-              spacer.innerHTML = `
-                <span class="train-dest">&nbsp;</span>
-                <span class="train-right"><span class="train-mins">&nbsp;</span><span class="train-hint"></span></span>
-              `;
-              col.appendChild(spacer);
-            }
-            return col;
-          };
-
-          if (!group.ok) {
-            const statusText = group.failed ? "更新失敗" : "更新中";
-            lineRow.appendChild(makeCol("DOWN", [], statusText));
-            lineRow.appendChild(makeCol("UP", [], statusText));
-          } else if (downHas && upHas) {
-            lineRow.appendChild(makeCol("DOWN", group.down));
-            lineRow.appendChild(makeCol("UP", group.up));
-          } else if (downHas) {
-            const downColLocal = makeCol("DOWN", group.down, "");
-            const upColLocal = makeCol("UP", [], "");
-            upColLocal.style.display = "none";
-            lineRow.appendChild(downColLocal);
-            lineRow.appendChild(upColLocal);
-          } else if (upHas) {
-            const downColLocal = makeCol("DOWN", [], "");
-            const upColLocal = makeCol("UP", group.up, "");
-            downColLocal.style.display = "none";
-            lineRow.appendChild(downColLocal);
-            lineRow.appendChild(upColLocal);
-          } else {
-            groupWrap.classList.add("xfr-empty");
-            lineRow.appendChild(makeCol("DOWN", [], "暫無班次"));
-            lineRow.appendChild(makeCol("UP", [], "暫無班次"));
-          }
-          groupWrap.appendChild(lineRow);
-
-          frag.appendChild(groupWrap);
-        });
-        downList.appendChild(frag);
-      };
-      downCol.style.display = "";
-      upCol.style.display = "";
-      renderMulti();
-      downList.querySelectorAll(".train-row").forEach(row => visibleRows.push(row));
-      return;
-    }
-
-    const data = byKey.get(`${line}-${code}`);
-    const entry = data?.data?.[`${line}-${code}`];
-    if (!data || !entry) {
-      const statusText = errorKeys.has(`${line}-${code}`) ? "更新失敗" : "更新中";
-      changes.push({ card, display: "" });
-      downCol.style.display = "";
-      upCol.style.display = "";
-      fillList(downList, [], statusText, code, "DOWN");
-      fillList(upList, [], statusText, code, "UP");
-      downList.querySelectorAll(".train-row").forEach(row => visibleRows.push(row));
-      upList.querySelectorAll(".train-row").forEach(row => visibleRows.push(row));
-      return;
-    }
-    const downTrains = groups[0]?.down || [];
-    const upTrains = groups[0]?.up || [];
-    const hasAnyTrain = downTrains.length > 0 || upTrains.length > 0;
-    const override = DIR_OVERRIDE[`${line}-${code}`];
-
-    if (!hasAnyTrain) {
-      if (line === "EAL" && code === "RAC") {
-        changes.push({ card, display: "none" });
-        return;
-      }
-      changes.push({ card, display: "" });
-      downCol.style.display = "";
-      upCol.style.display = "";
-      if (override === "DOWN") {
-        upCol.style.display = "none";
-        fillList(downList, [], "暫無班次", code, "DOWN");
-      } else if (override === "UP") {
-        downCol.style.display = "none";
-        fillList(upList, [], "暫無班次", code, "UP");
-      } else {
-        fillList(downList, [], "暫無班次", code, "DOWN");
-        fillList(upList, [], "暫無班次", code, "UP");
-      }
-      downList.querySelectorAll(".train-row").forEach(row => visibleRows.push(row));
-      if (upCol.style.display !== "none") {
-        upList.querySelectorAll(".train-row").forEach(row => visibleRows.push(row));
-      }
-      return;
-    }
-
-    changes.push({ card, display: "" });
-    if (override === "DOWN") {
-      downCol.style.display = "";
-      upCol.style.display = "none";
-      fillList(downList, downTrains, "", code, "DOWN");
-    } else if (override === "UP") {
-      downCol.style.display = "none";
-      upCol.style.display = "";
-      fillList(upList, upTrains, "", code, "UP");
-    } else {
-      if (downTrains.length > 0) {
-        downCol.style.display = "";
-        fillList(downList, downTrains, "", code, "DOWN");
-      } else {
-        downCol.style.display = upTrains.length > 0 ? "none" : "";
-        if (downCol.style.display !== "none") fillList(downList, [], "暫無班次", code, "DOWN");
-      }
-      if (upTrains.length > 0) {
-        upCol.style.display = "";
-        fillList(upList, upTrains, "", code, "UP");
-      } else {
-        upCol.style.display = downTrains.length > 0 ? "none" : "";
-        if (upCol.style.display !== "none") fillList(upList, [], "暫無班次", code, "UP");
-      }
-    }
-    downList.querySelectorAll(".train-row").forEach(row => visibleRows.push(row));
-    if (upCol.style.display !== "none") {
-      upList.querySelectorAll(".train-row").forEach(row => visibleRows.push(row));
-    }
-  });
-
-  changes.forEach(({ card, display }) => {
-    card.style.display = display;
-  });
-
-  lastUpdate.textContent = timeStr;
-  updateAllRows();
-  requestAnimationFrame(() => {
+  const job = { line, controller, promise: null };
+  activeRefresh = job;
+  job.promise = runLimited([...requestItems.values()], async item => {
+    if (controller.signal.aborted) return;
+    let data, error;
+    try { data = await fetchStationSchedule(item.line, item.code, controller.signal); }
+    catch (err) { error = err; }
+    if (token !== refreshToken || controller.signal.aborted) return;
+    stationStates.set(item.key, { data, error });
+    renderSchedules();
+  }).finally(() => {
+    if (activeRefresh !== job) return;
+    activeRefresh = null;
+    remaining = REFRESH_SECONDS;
+    countdownEl.textContent = remaining;
     board.classList.remove("is-refreshing");
   });
+  return job.promise;
 }
 
-refreshBtn.addEventListener("click", refreshAll);
+refreshBtn.addEventListener("click", () => refreshAll());
 toggleButtons.forEach(btn => {
+  btn.setAttribute("aria-label", `顯示 ${btn.dataset.count} 班列車`);
+  btn.setAttribute("aria-pressed", String(Number(btn.dataset.count) === visibleCount));
   btn.addEventListener("click", () => {
-    const count = Number(btn.dataset.count);
-    visibleCount = Number.isNaN(count) ? 1 : count;
-    toggleButtons.forEach(b => b.classList.toggle("active", b === btn));
-    if (toggleGroup) {
-      toggleGroup.classList.toggle("has-active", toggleButtons.some(b => b.classList.contains("active")));
-    }
-    refreshAll();
+    visibleCount = Number(btn.dataset.count) || 1;
+    toggleButtons.forEach(b => {
+      b.classList.toggle("active", b === btn);
+      b.setAttribute("aria-pressed", String(b === btn));
+    });
+    renderSchedules();
   });
 });
 
-lineTabs.forEach(btn => {
-  btn.addEventListener("click", () => {
-    activeLine = btn.dataset.line || "EAL";
-    localStorage.setItem(ACTIVE_LINE_KEY, activeLine);
-    applyLineFilter();
-    refreshAll();
-  });
-});
+lineTabs.forEach(btn => btn.addEventListener("click", () => {
+  activeLine = btn.dataset.line || "EAL";
+  localStorage.setItem(ACTIVE_LINE_KEY, activeLine);
+  applyLineFilter();
+  refreshAll();
+}));
 
 function tickCountdown() {
   if (document.hidden) return;
@@ -618,7 +473,7 @@ function tickCountdown() {
   countdownEl.classList.toggle("blink", remaining <= 5);
   const countdownPill = document.getElementById("countdown-pill");
   if (countdownPill) countdownPill.classList.toggle("blink", remaining <= 5);
-  updateAllRows();
+  renderSchedules();
   if (remaining === 0) {
     refreshAll();
   }
@@ -640,6 +495,10 @@ function stopRefreshTimer() {
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     stopRefreshTimer();
+    activeRefresh?.controller.abort();
+    queueController?.abort();
+    ++refreshToken;
+    activeRefresh = null;
     return;
   }
   remaining = REFRESH_SECONDS;

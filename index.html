@@ -14,9 +14,9 @@
         <h1 class="title">Next</h1>
       </div>
       <div class="top-right">
-        <span id="last-update" class="pill">--:--:--</span>
+        <span id="last-update" class="pill" aria-label="列車資料來源時間">--:--:--</span>
         <span id="countdown-pill" class="pill"><span id="countdown">15</span>s</span>
-        <span class="toggle-group">
+        <span class="toggle-group" role="group" aria-label="顯示班次數量">
           <button class="toggle-btn" data-count="1">1</button>
           <button class="toggle-btn" data-count="2">2</button>
           <button class="toggle-btn" data-count="3">3</button>
@@ -27,7 +27,7 @@
       </div>
     </header>
 
-    <div class="line-tabs">
+    <div class="line-tabs" role="group" aria-label="路線">
       <button class="line-tab active" data-line="EAL" style="--tab-color:#53B7E8;">東鐵</button>
       <button class="line-tab" data-line="TML" style="--tab-color:#9A3A2B;">屯馬</button>
       <button class="line-tab" data-line="KTL" style="--tab-color:#00A551;">觀塘</button>

@@ -177,9 +177,6 @@ const CP_RESIDENT_URL = "https://secure1.info.gov.hk/immd/mobileapps/2bb9ae17/da
 const CP_VISITOR_URL = "https://secure1.info.gov.hk/immd/mobileapps/2bb9ae17/data/CPQueueTimeV.json";
 const CP_PROXY_BASE = "https://mtr-board.dllm-0bb.workers.dev";
 const REFRESH_SECONDS = 15;
-const NORMAL_DIFF = 10;
-const MEDIUM_DIFF = 45;
-const MAX_SLEW = 2;
 const GRACE_AFTER_ZERO = 8;
 const LINE_COLORS = {
   EAL: "#53B7E8",

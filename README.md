@@ -54,3 +54,20 @@ Opening `index.html` directly may work for the shell, but API calls are more rel
 - Add Transport Department Special Traffic News filtering for MTR-related incidents.
 - Add anomaly detection for unusual ETA and headway patterns.
 - Add AI-generated incident summaries after deterministic detection is in place.
+
+## Regression checks
+
+No installation is needed for deterministic checks (Node.js 18 or newer):
+
+```sh
+TZ=Asia/Hong_Kong node --test tests/regression.test.cjs
+TZ=UTC node --test tests/regression.test.cjs
+TZ=America/Los_Angeles node --test tests/regression.test.cjs
+node --check config.js
+node --check api.js
+node --check app.js
+```
+
+The optional `tests/browser-regression.cjs` uses an **already installed** Playwright Core and Chromium. Set `PLAYWRIGHT_MODULE` to the module path and `CHROMIUM_PATH` to the executable if needed; set `QA_OUTPUT` to a screenshot directory. It serves the site on loopback and mocks all external APIs. It covers hung queue feeds, request overlap and cancellation, source freshness, replacement trains, errors, and narrow-screen control sizes. It never installs dependencies or calls publication helpers.
+
+MTR timestamps are parsed as Hong Kong time, retaining the API date across midnight. Each countdown uses the same ETA as its tooltip. The header shows the oldest currently usable source timestamp; `部分` means some visible station data is unavailable. Source data older than 90 seconds is withheld and marked expired. Border queues update separately, with their check time and partial failures shown. Refreshes pause and outstanding requests abort while the page is hidden. Same-view refreshes coalesce, while line changes cancel superseded work.

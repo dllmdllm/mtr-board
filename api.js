@@ -10,15 +10,19 @@ function cacheKey(parts) {
   return parts.join(":");
 }
 
-async function fetchJson(url, timeoutMs = FETCH_TIMEOUT_MS) {
+async function fetchJson(url, timeoutMs = FETCH_TIMEOUT_MS, signal) {
   const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (signal?.aborted) abort();
+  signal?.addEventListener("abort", abort, { once: true });
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, { cache: "no-store", signal: controller.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+    return await res.json();
   } finally {
     clearTimeout(timeout);
+    signal?.removeEventListener("abort", abort);
   }
 }
 
@@ -37,29 +41,29 @@ function writeCache(cache, key, value) {
   return value;
 }
 
-async function fetchStationSchedule(line, code) {
+async function fetchStationSchedule(line, code, signal) {
   const key = cacheKey(["schedule", line, code]);
   const cached = readCache(scheduleCache, key, SCHEDULE_CACHE_MS);
   if (cached) return cached;
 
   const url = `${API_BASE}?line=${line}&sta=${code}&lang=TC`;
-  const data = await fetchJson(url);
+  const data = await fetchJson(url, FETCH_TIMEOUT_MS, signal);
   return writeCache(scheduleCache, key, data);
 }
 
-async function fetchCachedJson(url, ttlMs = CP_CACHE_MS) {
+async function fetchCachedJson(url, ttlMs = CP_CACHE_MS, signal) {
   const cached = readCache(jsonCache, url, ttlMs);
   if (cached) return cached;
-  const data = await fetchJson(url);
+  const data = await fetchJson(url, FETCH_TIMEOUT_MS, signal);
   return writeCache(jsonCache, url, data);
 }
 
-async function fetchControlPointQueues() {
+async function fetchControlPointQueues(signal) {
   const proxyResident = `${CP_PROXY_BASE}?target=${encodeURIComponent(CP_RESIDENT_URL)}`;
   const proxyVisitor = `${CP_PROXY_BASE}?target=${encodeURIComponent(CP_VISITOR_URL)}`;
   const [residentData, visitorData] = await Promise.all([
-    fetchCachedJson(proxyResident).catch(() => null),
-    fetchCachedJson(proxyVisitor).catch(() => null)
+    fetchCachedJson(proxyResident, CP_CACHE_MS, signal).catch(() => null),
+    fetchCachedJson(proxyVisitor, CP_CACHE_MS, signal).catch(() => null)
   ]);
   return { residentData, visitorData };
 }

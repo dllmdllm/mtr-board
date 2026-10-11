@@ -610,3 +610,38 @@
         column-gap: 6px;
       }
     }
+
+/* Controls remain usable by touch, keyboard and at narrow viewport widths. */
+button { min-width: 44px; min-height: 44px; }
+button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.board { min-height: 0; }
+.train-dest { min-width: 0; overflow-wrap: anywhere; }
+.cp-table caption { padding: 6px; color: var(--muted); font-size: 12px; }
+.cp-card { overflow-x: auto; }
+.line-tab.active[data-line="TML"], .line-tab.active[data-line="TWL"],
+.line-tab.active[data-line="ISL"], .line-tab.active[data-line="TKL"],
+.line-tab.active[data-line="AEL"], .line-tab.active[data-line="DRL"] { color: #fff; }
+
+@media (max-width: 760px) {
+  body { padding: 12px 12px 16px; }
+  header { gap: 8px; }
+  .top-right { flex-wrap: wrap; gap: 8px; max-width: 100%; }
+  .board { grid-template-columns: minmax(0, 1fr); }
+  .station-card { padding: 12px; gap: 10px; }
+  .station-name { font-size: 18px; }
+  .train-row, .xfr-mode .train-row { font-size: 14px; line-height: 1.5; }
+  .plat-num { font-size: 12px; margin-right: 3px; }
+  .line-tab { font-size: 14px; padding: 8px 12px; }
+  .card-body, .xfr-pair { gap: 12px; }
+  .cp-table { min-width: 560px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blink, .fade-in { animation: none; }
+  .station-card { transition: none; }
+}
+.service-link { color: #fff; text-decoration: underline; padding: 8px; min-height: 44px; }
+.card-body:has(> .dir-col[style*="display: none"]),
+.xfr-pair:has(> .xfr-col[style*="display: none"]) { grid-template-columns: minmax(0, 1fr); }
+.train-row { color: var(--text); }
+.plat-num { color: var(--platform-color, var(--text)); }
