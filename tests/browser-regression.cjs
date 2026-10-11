@@ -6,7 +6,7 @@ const root=path.join(__dirname,'..');
 const now=Date.parse('2026-10-11T14:56:59Z');
 const server=http.createServer((req,res)=>{
   const name=req.url.split('?')[0]==='/'?'index.html':req.url.split('?')[0].slice(1);
-  if(!['index.html','styles.css','config.js','api.js','app.js'].includes(name)){res.writeHead(404);res.end();return;}
+  if(!['index.html','styles.css','config.js','api.js','favorites.js','service-news.js','app.js'].includes(name)){res.writeHead(404);res.end();return;}
   res.setHeader('Content-Type',name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':'text/html');
   res.end(fs.readFileSync(path.join(root,name)));
 });
@@ -30,6 +30,7 @@ let browser;
       await route.fulfill({json:data});
     });
     await page.route('**/mtr-board.dllm-0bb.workers.dev/**',route=>{queued.push(route);});
+    await page.route('**/special_news/trafficnews.xml',route=>route.fulfill({contentType:'application/xml',body:'<list/>'}));
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     await page.waitForFunction(()=>activeRefresh===null && document.querySelector('.train-row[data-target] .train-mins')?.textContent==='4 分');
     const adm=page.locator('.station-card[data-line="EAL"][data-code="ADM"]');

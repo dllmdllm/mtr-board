@@ -16,8 +16,14 @@ const STALE_AFTER_MS = 90000;
 let activeRefresh = null;
 let queueController = null;
 const ACTIVE_LINE_KEY = "activeLine";
-let activeLine = localStorage.getItem(ACTIVE_LINE_KEY) || "EAL";
+let activeLine = "EAL";
+try { activeLine = browserStorage().getItem(ACTIVE_LINE_KEY) || "EAL"; } catch { /* Use the full board when storage is unavailable. */ }
 if (activeLine !== "XFR" && !LINE_NAMES[activeLine]) activeLine = "EAL";
+const loadedFavorites = loadFavorites(browserStorage());
+let favorites = loadedFavorites.data;
+let favoritesWarning = loadedFavorites.warning;
+let selectedFavorite = favorites.items.find(item => favoriteId(item) === favorites.selectedId) || null;
+if (selectedFavorite) activeLine = selectedFavorite.line;
 let visibleCards = [];
 let visibleRows = [];
 let refreshToken = 0;
@@ -87,6 +93,7 @@ function isPrimaryInterchangeCard(card) {
 }
 
 function shouldShowCard(card) {
+  if (selectedFavorite) return card.dataset.line === selectedFavorite.line && card.dataset.code === selectedFavorite.code;
   if (activeLine === "XFR") return isPrimaryInterchangeCard(card);
   return card.dataset.line === activeLine;
 }
@@ -224,7 +231,7 @@ function applyLineFilter() {
     if (show) visibleCards.push(card);
   });
   if (cpBoard) {
-    cpBoard.style.display = activeLine === "EAL" ? "" : "none";
+    cpBoard.style.display = activeLine === "EAL" && !selectedFavorite ? "" : "none";
   }
 }
 
@@ -367,13 +374,20 @@ function renderSchedules() {
         pair.appendChild(down); pair.appendChild(up);
         group.appendChild(pair); downList.appendChild(group);
       }
+      if (selectedFavorite) {
+        card.querySelector(".station-name").textContent = `${name} · ${DIRECTION_LABELS[lineKey][selectedFavorite.direction]}`;
+        downCol.style.display = selectedFavorite.direction === "DOWN" ? "" : "none";
+        upCol.style.display = selectedFavorite.direction === "UP" ? "" : "none";
+      } else {
+        card.querySelector(".station-name").textContent = name;
+      }
       if (state.kind !== "ready") {
         down.appendChild(statusRow(state.text, state.url));
         if (activeLine === "XFR") up.style.display = "none";
         else up.appendChild(statusRow(state.text, state.url));
         return;
       }
-      if (state.text) down.appendChild(statusRow(state.text, state.url));
+      if (state.text) (selectedFavorite?.direction === "UP" ? up : down).appendChild(statusRow(state.text, state.url));
       const addTrains = (list, trains, dir) => {
         if (!trains.length) list.appendChild(statusRow("暫無班次"));
         trains.slice(0, visibleCount).forEach(train => {
@@ -382,14 +396,14 @@ function renderSchedules() {
           list.appendChild(row); visibleRows.push(row);
         });
       };
-      addTrains(down, state.down, "DOWN");
-      addTrains(up, state.up, "UP");
-      if (state.down.length && !state.up.length) {
+      if (!selectedFavorite || selectedFavorite.direction === "DOWN") addTrains(down, state.down, "DOWN");
+      if (!selectedFavorite || selectedFavorite.direction === "UP") addTrains(up, state.up, "UP");
+      if (!selectedFavorite && state.down.length && !state.up.length) {
         if (activeLine === "XFR") up.style.display = "none"; else upCol.style.display = "none";
-      } else if (state.up.length && !state.down.length && !state.text) {
+      } else if (!selectedFavorite && state.up.length && !state.down.length && !state.text) {
         if (activeLine === "XFR") down.style.display = "none"; else downCol.style.display = "none";
       }
-      if (lineKey === "EAL" && code === "RAC" && !state.down.length && !state.up.length) card.style.display = "none";
+      if (!selectedFavorite && lineKey === "EAL" && code === "RAC" && !state.down.length && !state.up.length) card.style.display = "none";
     });
   });
   const oldest = readyTimes.length ? Math.min(...readyTimes) : null;
@@ -400,7 +414,8 @@ function renderSchedules() {
 
 async function refreshAll() {
   if (document.hidden) return;
-  if (activeRefresh?.line === activeLine) return activeRefresh.promise;
+  const view = `${activeLine}|${selectedFavorite ? favoriteId(selectedFavorite) : "all"}`;
+  if (activeRefresh?.view === view) return activeRefresh.promise;
   activeRefresh?.controller.abort();
   queueController?.abort();
   const controller = new AbortController();
@@ -416,7 +431,7 @@ async function refreshAll() {
   });
   board.classList.add("is-refreshing");
   renderSchedules();
-  if (line === "EAL") {
+  if (line === "EAL" && !selectedFavorite) {
     if (cpBoard) cpBoard.textContent = "口岸資料更新中";
     queueController = new AbortController();
     const queueSignal = queueController.signal;
@@ -425,7 +440,7 @@ async function refreshAll() {
       renderControlPoints(queues.residentData, queues.visitorData);
     }).catch(() => { if (token === refreshToken && !queueSignal.aborted) showControlPointError(); });
   }
-  const job = { line, controller, promise: null };
+  const job = { line, view, controller, promise: null };
   activeRefresh = job;
   job.promise = runLimited([...requestItems.values()], async item => {
     if (controller.signal.aborted) return;
@@ -461,7 +476,11 @@ toggleButtons.forEach(btn => {
 
 lineTabs.forEach(btn => btn.addEventListener("click", () => {
   activeLine = btn.dataset.line || "EAL";
-  localStorage.setItem(ACTIVE_LINE_KEY, activeLine);
+  selectedFavorite = null;
+  favorites.selectedId = null;
+  persistFavorites();
+  try { browserStorage().setItem(ACTIVE_LINE_KEY, activeLine); } catch { /* Selection still works for this visit. */ }
+  renderFavoriteShortcuts();
   applyLineFilter();
   refreshAll();
 }));
@@ -507,6 +526,99 @@ document.addEventListener("visibilitychange", () => {
   refreshAll();
 });
 
+initializeFavorites();
 renderBoard();
 refreshAll();
 startRefreshTimer();
+initializeServiceNews();
+
+
+function persistFavorites() {
+  favoritesWarning = saveFavorites(browserStorage(), favorites);
+}
+
+function openFavorite(item) {
+  selectedFavorite = item;
+  activeLine = item.line;
+  favorites.selectedId = favoriteId(item);
+  persistFavorites();
+  renderFavoriteShortcuts();
+  document.querySelector(".favorite-shortcut button[aria-pressed=true]")?.focus();
+  applyLineFilter();
+  refreshAll();
+}
+
+function renderFavoriteShortcuts(message = "") {
+  renderServiceNews();
+  const shortcuts = document.getElementById("favorites-shortcuts");
+  shortcuts.replaceChildren();
+  favorites.items.forEach(item => {
+    const station = STATIONS.find(s => s.line === item.line && s.code === item.code);
+    const label = `${station.name} · ${LINE_NAMES[item.line]} ${DIRECTION_LABELS[item.line][item.direction]}`;
+    const group = document.createElement("div");
+    group.className = "favorite-shortcut";
+    const open = document.createElement("button");
+    open.type = "button";
+    open.textContent = label;
+    open.setAttribute("aria-pressed", String(selectedFavorite && favoriteId(selectedFavorite) === favoriteId(item) || false));
+    open.addEventListener("click", () => openFavorite(item));
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "×";
+    remove.setAttribute("aria-label", `移除 ${label}`);
+    remove.addEventListener("click", () => {
+      const wasSelected = favorites.selectedId === favoriteId(item);
+      favorites = removeFavorite(favorites, favoriteId(item));
+      if (wasSelected) selectedFavorite = null;
+      persistFavorites();
+      renderFavoriteShortcuts("已移除快捷鍵");
+      document.querySelector("#favorites-editor summary").focus();
+      if (wasSelected) { applyLineFilter(); refreshAll(); }
+    });
+    group.append(open, remove);
+    shortcuts.appendChild(group);
+  });
+  document.getElementById("favorites-full").setAttribute("aria-pressed", String(!selectedFavorite));
+  document.getElementById("favorites-message").textContent = favoritesWarning || message || (favorites.items.length ? "快捷鍵只顯示所選方向；點路線可返回完整看板。" : "尚未儲存常用車站。選擇路線、車站及方向來新增快捷鍵。");
+}
+
+function initializeFavorites() {
+  const lineSelect = document.getElementById("favorite-line");
+  const stationSelect = document.getElementById("favorite-station");
+  const directionSelect = document.getElementById("favorite-direction");
+  const save = document.getElementById("favorite-save");
+  const option = (value, label) => {
+    const entry = document.createElement("option");
+    entry.value = value; entry.textContent = label; return entry;
+  };
+  Object.keys(LINE_NAMES).forEach(line => lineSelect.appendChild(option(line, LINE_NAMES[line])));
+  lineSelect.value = activeLine === "XFR" ? "EAL" : activeLine;
+  const updateChoices = () => {
+    stationSelect.replaceChildren(option("", "選擇車站"));
+    STATIONS.filter(station => station.line === lineSelect.value).forEach(station => stationSelect.appendChild(option(station.code, station.name)));
+    directionSelect.replaceChildren(...["DOWN", "UP"].map(dir => option(dir, DIRECTION_LABELS[lineSelect.value][dir])));
+    save.disabled = true;
+  };
+  updateChoices();
+  lineSelect.addEventListener("change", updateChoices);
+  stationSelect.addEventListener("change", () => { save.disabled = !stationSelect.value; });
+  document.getElementById("favorites-form").addEventListener("submit", event => {
+    event.preventDefault();
+    const item = {line:lineSelect.value, code:stationSelect.value, direction:directionSelect.value};
+    if (!validFavorite(item)) return;
+    const result = addFavorite(favorites, item);
+    favorites = result.data;
+    openFavorite(item);
+    renderFavoriteShortcuts(result.duplicate ? "此快捷鍵已儲存" : "已儲存快捷鍵");
+    document.getElementById("favorites-editor").open = false;
+    document.querySelector(".favorite-shortcut button[aria-pressed=true]")?.focus();
+  });
+  document.getElementById("favorites-full").addEventListener("click", () => {
+    selectedFavorite = null;
+    favorites.selectedId = null;
+    persistFavorites();
+    renderFavoriteShortcuts();
+    applyLineFilter(); refreshAll();
+  });
+  renderFavoriteShortcuts();
+}

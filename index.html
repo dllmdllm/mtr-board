@@ -41,6 +41,31 @@
       <button class="line-tab" data-line="XFR" style="--tab-color:#f5b700;">轉車</button>
     </div>
 
+    <section class="favorites-panel" aria-label="常用車站及方向">
+      <div class="favorites-head">
+        <strong>常用車站</strong>
+        <button id="favorites-full" type="button" aria-pressed="true">完整路線</button>
+      </div>
+      <div id="favorites-shortcuts" class="favorites-shortcuts"></div>
+      <p id="favorites-message" role="status" aria-live="polite"></p>
+      <details id="favorites-editor">
+        <summary>新增常用車站</summary>
+        <form id="favorites-form">
+          <label>路線<select id="favorite-line" required></select></label>
+          <label>車站<select id="favorite-station" required></select></label>
+          <label>方向<select id="favorite-direction" required></select></label>
+          <button id="favorite-save" type="submit" disabled>儲存快捷鍵</button>
+        </form>
+      </details>
+    </section>
+
+    <details id="service-panel" class="service-panel">
+      <summary>官方交通消息 · <span id="service-summary">更新中</span></summary>
+      <p>來源：<a href="https://data.gov.hk/en-data/dataset/hk-td-tis_19-special-traffic-news-v2/resource/c177d6fe-658f-4320-9594-a9cb54a3af62">運輸署特別交通消息</a> · <a href="https://tnews.mtr.com.hk/alert/alert_simpletxt_title_tc.html">港鐵官方服務狀況</a></p>
+      <p class="service-disclosure">官方資料摘要（規則整理，非 AI）。只根據原文核對收藏路線，不估班次、復修時間或替代路線。</p>
+      <div id="service-notices"></div>
+    </details>
+
     <section id="board" class="board">
       <section id="cp-board" class="cp-board"></section>
     </section>
@@ -48,6 +73,8 @@
 
   <script src="config.js" defer></script>
   <script src="api.js" defer></script>
+  <script src="favorites.js" defer></script>
+  <script src="service-news.js" defer></script>
   <script src="app.js" defer></script>
 </body>
 </html>

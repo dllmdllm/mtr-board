@@ -645,3 +645,30 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .xfr-pair:has(> .xfr-col[style*="display: none"]) { grid-template-columns: minmax(0, 1fr); }
 .train-row { color: var(--text); }
 .plat-num { color: var(--platform-color, var(--text)); }
+.favorites-panel { flex: none; max-height: 40vh; overflow: auto; margin: 8px 0 12px; padding: 10px; border: 1px solid #53616e; border-radius: 12px; font-size: 14px; }
+.favorites-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.favorites-panel button, .favorites-panel select { font: inherit; color: var(--text); background: #172531; border: 1px solid #7c8994; border-radius: 8px; padding: 8px; min-height: 44px; }
+.favorites-panel button[aria-pressed="true"] { background: var(--accent); color: #1d1604; }
+.favorites-panel button:disabled { opacity: .5; }
+.favorites-shortcuts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.favorite-shortcut { display: flex; gap: 4px; max-width: 100%; }
+.favorite-shortcut button:first-child { min-width: 0; white-space: normal; text-align: left; }
+#favorites-message { margin: 8px 0; color: var(--muted); }
+#favorites-editor summary { padding: 12px 4px; min-height: 44px; cursor: pointer; }
+#favorites-editor summary:focus-visible, .favorites-panel select:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+#favorites-form { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+#favorites-form label { display: grid; gap: 4px; flex: 1 1 140px; min-width: 0; }
+@media (max-width: 760px) { .favorite-shortcut { width: 100%; } .favorite-shortcut button:first-child { flex: 1; } }
+.service-panel { flex: none; max-height: 30vh; overflow: auto; margin-bottom: 12px; border: 1px solid #53616e; border-radius: 10px; padding: 4px 10px; font-size: 14px; }
+.service-panel summary { min-height: 44px; padding: 12px 4px; cursor: pointer; }
+.service-panel summary:focus-visible { outline: 3px solid #fff; }
+.service-panel p { line-height: 1.5; }
+.service-panel a { color: #a4dcff; }
+.service-notice { border-top: 1px solid #53616e; padding: 12px 0; }
+.service-disclosure { color: var(--muted); }
+@media (max-height: 600px) {
+  body { height: auto; overflow-y: auto; }
+  .shell { height: auto; }
+  .board { flex: none; overflow-y: visible; }
+  .favorites-panel, .service-panel { max-height: none; }
+}
