@@ -10,9 +10,9 @@ function runtime(overrides = {}) {
     navigator:{onLine:true},localStorage:{getItem(){return null}},
     document:{getElementById(){return empty},querySelectorAll(){return []},querySelector(){return null},addEventListener(){}},
     ...overrides});
-  for (const file of ['config.js','api.js','app.js']) {
+  for (const file of ['config.js','api.js','favorites.js','service-news.js','app.js']) {
     let code = fs.readFileSync(path.join(root,file),'utf8');
-    if (file === 'app.js') code = code.replace(/renderBoard\(\);\s*refreshAll\(\);\s*startRefreshTimer\(\);\s*$/, '');
+    if (file === 'app.js') code = code.replace('initializeFavorites();\nrenderBoard();\nrefreshAll();\nstartRefreshTimer();\ninitializeServiceNews();', '');
     vm.runInContext(code,context);
   }
   return context;
@@ -57,4 +57,42 @@ test('station concurrency is bounded and every result can make progress',async()
   const c=runtime();let active=0,max=0,done=0;
   const result=await c.runLimited(Array.from({length:27},(_,i)=>i),async item=>{active++;max=Math.max(max,active);await Promise.resolve();active--;done++;return item;});
   assert.equal(max,6);assert.equal(done,27);assert.equal(result.length,27);
+});
+test('favorites start empty, tolerate corrupt/unavailable storage and validate persisted choices',()=>{
+  const c=runtime();
+  assert.equal(c.loadFavorites({getItem:()=>null}).data.items.length,0);
+  for(const raw of ['broken','{"version":2,"items":[]}','{"version":1,"items":[{"line":"EAL","code":"BAD","direction":"UP"}]}']){
+    const loaded=c.loadFavorites({getItem:()=>raw});assert.equal(loaded.data.items.length,0);assert.ok(loaded.warning);
+  }
+  assert.ok(c.loadFavorites({getItem(){throw new Error('blocked')}}).warning);
+  assert.ok(c.saveFavorites({setItem(){throw new Error('quota')}},{version:1,items:[],selectedId:null}));
+});
+test('favorites save/remove, deduplicate station+line+direction, and preserve explicit selected shortcut',()=>{
+  const c=runtime(),initial={version:1,items:[],selectedId:null};
+  const first=c.addFavorite(initial,{line:'EAL',code:'FAN',direction:'DOWN'});
+  assert.equal(first.data.items.length,1);assert.equal(first.duplicate,false);
+  const duplicate=c.addFavorite(first.data,{line:'EAL',code:'FAN',direction:'DOWN'});
+  assert.equal(duplicate.data.items.length,1);assert.equal(duplicate.duplicate,true);
+  const opposite=c.addFavorite(duplicate.data,{line:'EAL',code:'FAN',direction:'UP'});
+  assert.equal(opposite.data.items.length,2);assert.equal(opposite.data.selectedId,'EAL-FAN-UP');
+  let stored;assert.equal(c.saveFavorites({setItem:(key,value)=>stored=value},opposite.data),'');
+  const loaded=c.loadFavorites({getItem:()=>stored});assert.equal(loaded.data.selectedId,'EAL-FAN-UP');
+  assert.equal(c.removeFavorite(loaded.data,'EAL-FAN-UP').selectedId,null);
+  assert.equal(c.removeFavorite(loaded.data,'EAL-FAN-DOWN').selectedId,'EAL-FAN-UP');
+  assert.throws(()=>c.addFavorite(initial,{line:'EAL',code:'FAN',direction:'SIDEWAYS'}));
+  const normalized=c.normalizeFavorites({version:1,items:[...opposite.data.items,opposite.data.items[0]],selectedId:'deleted'});
+  assert.equal(normalized.items.length,2);assert.equal(normalized.selectedId,null);
+});
+test('source-based favorites relevance never invents station/direction impact or all-clear status',()=>{
+  const c=runtime();
+  assert.match(c.favoriteNewsSummary({lines:['EAL']},[{line:'EAL',code:'FAN',direction:'DOWN'}]),/收藏嘅東鐵/);
+  assert.match(c.favoriteNewsSummary({lines:['EAL']},[{line:'EAL',code:'FAN',direction:'DOWN'}]),/原文/);
+  assert.match(c.favoriteNewsSummary({lines:[]},[{line:'EAL',code:'FAN',direction:'DOWN'}]),/未能判斷/);
+  assert.match(c.favoriteNewsSummary({lines:['KTL']},[{line:'EAL',code:'FAN',direction:'DOWN'}]),/唔代表/);
+  assert.match(c.favoriteNewsSummary({lines:['EAL']},[]),/未有收藏/);
+  assert.equal(c.newsCheckedTime(Date.parse('2026-10-11T16:01:00Z')),'2026-10-12 00:01:00');
+  assert.equal(c.plainNewsText('<p>港鐵服務消息</p><script>attack()</script>'),'港鐵服務消息');
+  assert.equal(c.relevantNewsText('粉嶺站附近道路交通恢復。'),false);
+  assert.equal(c.relevantNewsText('港鐵東鐵綫服務受阻。'),true);
+  assert.equal(c.relevantNewsText('MTR train service arrangements'),true);
 });
