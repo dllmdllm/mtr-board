@@ -22,6 +22,7 @@ if (activeLine !== "XFR" && !LINE_NAMES[activeLine]) activeLine = "EAL";
 const loadedFavorites = loadFavorites(browserStorage());
 let favorites = loadedFavorites.data;
 let favoritesWarning = loadedFavorites.warning;
+if (loadedFavorites.migrated) favoritesWarning = saveFavorites(browserStorage(), favorites);
 let selectedFavorite = favorites.items.find(item => favoriteId(item) === favorites.selectedId) || null;
 if (selectedFavorite) activeLine = selectedFavorite.line;
 let visibleCards = [];
@@ -160,7 +161,10 @@ function classifySchedule(data, key, error, now = Date.now()) {
   }
   if (now - sourceMs > STALE_AFTER_MS || sourceMs - now > STALE_AFTER_MS) return { kind: "stale", text: "資料已過期，請重試", sourceMs };
   const validTrains = trains => (Array.isArray(trains) ? trains : []).filter(t => t && Number.isFinite(parseTimeToMs(t.time)));
-  return { kind: "ready", sourceMs, down: validTrains(entry.DOWN), up: validTrains(entry.UP), text: data.isdelay === "Y" ? "列車延誤" : "" };
+  const down = validTrains(entry.DOWN), up = validTrains(entry.UP);
+  const downUnavailable = !Array.isArray(entry.DOWN) || (entry.DOWN.length > 0 && down.length === 0);
+  const upUnavailable = !Array.isArray(entry.UP) || (entry.UP.length > 0 && up.length === 0);
+  return { kind: "ready", sourceMs, down, up, downUnavailable, upUnavailable, text: data.isdelay === "Y" ? "列車延誤" : "" };
 }
 
 function formatCountdown(sec) {
@@ -170,7 +174,7 @@ function formatCountdown(sec) {
   return `${mins} 分`;
 }
 
-function trainRow(train, key) {
+function trainRow(train, key, showPlatformLabel = false) {
   const row = document.createElement("div");
   row.className = "train-row";
   if (!train) {
@@ -193,7 +197,7 @@ function trainRow(train, key) {
   if (!Number.isNaN(targetMs)) row.dataset.target = String(targetMs);
   row.title = `P${plat} | ${event} ${time}（香港時間）${route}`;
   row.innerHTML = `
-    <span class="train-dest"><span class="plat-num">${escapeHtml(plat)}</span>${escapeHtml(destName)}${route}</span>
+    <span class="train-dest"><span class="plat-num">${showPlatformLabel ? "月台 " : ""}${escapeHtml(plat)}</span> ${escapeHtml(destName)}${route}</span>
     <span class="train-right"><span class="train-mins">${mins}</span><span class="train-hint"></span></span>
   `;
   return row;
@@ -228,6 +232,7 @@ function applyLineFilter() {
     card.dataset.filtered = show ? "0" : "1";
     card.style.display = show ? "" : "none";
     card.classList.toggle("xfr-mode", activeLine === "XFR" && show);
+    card.classList.toggle("is-favorite", !!selectedFavorite && show);
     if (show) visibleCards.push(card);
   });
   if (cpBoard) {
@@ -374,12 +379,15 @@ function renderSchedules() {
         pair.appendChild(down); pair.appendChild(up);
         group.appendChild(pair); downList.appendChild(group);
       }
+      card.querySelector(".station-name").textContent = name;
       if (selectedFavorite) {
-        card.querySelector(".station-name").textContent = `${name} · ${DIRECTION_LABELS[lineKey][selectedFavorite.direction]}`;
-        downCol.style.display = selectedFavorite.direction === "DOWN" ? "" : "none";
-        upCol.style.display = selectedFavorite.direction === "UP" ? "" : "none";
-      } else {
-        card.querySelector(".station-name").textContent = name;
+        for (const [list, direction] of [[down, "DOWN"], [up, "UP"]]) {
+          const heading = document.createElement("h3");
+          heading.className = "direction-heading";
+          heading.textContent = `${DIRECTION_LABELS[lineKey][direction]}方向`;
+          list.appendChild(heading);
+        }
+        if (state.downUnavailable || state.upUnavailable) incomplete = true;
       }
       if (state.kind !== "ready") {
         down.appendChild(statusRow(state.text, state.url));
@@ -387,17 +395,17 @@ function renderSchedules() {
         else up.appendChild(statusRow(state.text, state.url));
         return;
       }
-      if (state.text) (selectedFavorite?.direction === "UP" ? up : down).appendChild(statusRow(state.text, state.url));
+      if (state.text) down.appendChild(statusRow(state.text, state.url));
       const addTrains = (list, trains, dir) => {
-        if (!trains.length) list.appendChild(statusRow("暫無班次"));
+        if (!trains.length) list.appendChild(statusRow(selectedFavorite && (dir === "DOWN" ? state.downUnavailable : state.upUnavailable) ? "此方向資料未提供" : "暫無班次"));
         trains.slice(0, visibleCount).forEach(train => {
           // Each row reads its own exact ETA; no countdown state survives replacement.
-          const row = trainRow(train, `${key}-${dir}-${train.time}-${train.dest}-${train.plat}`);
+          const row = trainRow(train, `${key}-${dir}-${train.time}-${train.dest}-${train.plat}`, !!selectedFavorite);
           list.appendChild(row); visibleRows.push(row);
         });
       };
-      if (!selectedFavorite || selectedFavorite.direction === "DOWN") addTrains(down, state.down, "DOWN");
-      if (!selectedFavorite || selectedFavorite.direction === "UP") addTrains(up, state.up, "UP");
+      addTrains(down, state.down, "DOWN");
+      addTrains(up, state.up, "UP");
       if (!selectedFavorite && state.down.length && !state.up.length) {
         if (activeLine === "XFR") up.style.display = "none"; else upCol.style.display = "none";
       } else if (!selectedFavorite && state.up.length && !state.down.length && !state.text) {
@@ -554,7 +562,7 @@ function renderFavoriteShortcuts(message = "") {
   shortcuts.replaceChildren();
   favorites.items.forEach(item => {
     const station = STATIONS.find(s => s.line === item.line && s.code === item.code);
-    const label = `${station.name} · ${LINE_NAMES[item.line]} ${DIRECTION_LABELS[item.line][item.direction]}`;
+    const label = `${station.name} · ${LINE_NAMES[item.line]}`;
     const group = document.createElement("div");
     group.className = "favorite-shortcut";
     const open = document.createElement("button");
@@ -579,13 +587,12 @@ function renderFavoriteShortcuts(message = "") {
     shortcuts.appendChild(group);
   });
   document.getElementById("favorites-full").setAttribute("aria-pressed", String(!selectedFavorite));
-  document.getElementById("favorites-message").textContent = favoritesWarning || message || (favorites.items.length ? "快捷鍵只顯示所選方向；點路線可返回完整看板。" : "尚未儲存常用車站。選擇路線、車站及方向來新增快捷鍵。");
+  document.getElementById("favorites-message").textContent = favoritesWarning || message || (favorites.items.length ? "快捷鍵同時顯示兩個方向；月台號碼按官方班次資料顯示。" : "尚未儲存常用車站。選擇路線及車站來新增快捷鍵。");
 }
 
 function initializeFavorites() {
   const lineSelect = document.getElementById("favorite-line");
   const stationSelect = document.getElementById("favorite-station");
-  const directionSelect = document.getElementById("favorite-direction");
   const save = document.getElementById("favorite-save");
   const option = (value, label) => {
     const entry = document.createElement("option");
@@ -596,7 +603,6 @@ function initializeFavorites() {
   const updateChoices = () => {
     stationSelect.replaceChildren(option("", "選擇車站"));
     STATIONS.filter(station => station.line === lineSelect.value).forEach(station => stationSelect.appendChild(option(station.code, station.name)));
-    directionSelect.replaceChildren(...["DOWN", "UP"].map(dir => option(dir, DIRECTION_LABELS[lineSelect.value][dir])));
     save.disabled = true;
   };
   updateChoices();
@@ -604,7 +610,7 @@ function initializeFavorites() {
   stationSelect.addEventListener("change", () => { save.disabled = !stationSelect.value; });
   document.getElementById("favorites-form").addEventListener("submit", event => {
     event.preventDefault();
-    const item = {line:lineSelect.value, code:stationSelect.value, direction:directionSelect.value};
+    const item = {line:lineSelect.value, code:stationSelect.value};
     if (!validFavorite(item)) return;
     const result = addFavorite(favorites, item);
     favorites = result.data;

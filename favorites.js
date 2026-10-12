@@ -13,33 +13,36 @@ const DIRECTION_LABELS = {
 };
 
 function favoriteId(item) {
-  return `${item.line}-${item.code}-${item.direction}`;
+  return `${item.line}-${item.code}`;
 }
 
 function validFavorite(item) {
-  return !!item && typeof item === "object" && ["UP", "DOWN"].includes(item.direction) &&
+  return !!item && typeof item === "object" &&
     STATIONS.some(station => station.line === item.line && station.code === item.code);
 }
 
 function normalizeFavorites(value) {
-  if (!value || value.version !== 1 || !Array.isArray(value.items)) throw new Error("Invalid favorites");
+  if (!value || ![1, 2].includes(value.version) || !Array.isArray(value.items)) throw new Error("Invalid favorites");
   const unique = new Map();
+  let selectedId = null;
   for (const item of value.items) {
-    if (!validFavorite(item)) throw new Error("Invalid station or direction");
-    const clean = {line:item.line, code:item.code, direction:item.direction};
-    unique.set(favoriteId(clean), clean);
+    if (!validFavorite(item) || (value.version === 1 && !["UP", "DOWN"].includes(item.direction))) throw new Error("Invalid station");
+    const clean = {line:item.line, code:item.code};
+    const id = favoriteId(clean);
+    unique.set(id, clean);
+    const oldId = value.version === 1 ? `${id}-${item.direction}` : id;
+    if (value.selectedId === oldId) selectedId = id;
   }
-  const items = [...unique.values()];
-  const selectedId = typeof value.selectedId === "string" && unique.has(value.selectedId) ? value.selectedId : null;
-  return {version:1, items, selectedId};
+  return {version:2, items:[...unique.values()], selectedId};
 }
 
 function loadFavorites(storage) {
   try {
     const raw = storage.getItem(FAVORITES_KEY);
-    return {data:raw === null ? {version:1, items:[], selectedId:null} : normalizeFavorites(JSON.parse(raw)), warning:""};
+    const value = raw === null ? {version:2, items:[], selectedId:null} : JSON.parse(raw);
+    return {data:normalizeFavorites(value), warning:"", migrated:value.version === 1};
   } catch {
-    return {data:{version:1, items:[], selectedId:null}, warning:"未能讀取常用車站；你仍可使用完整看板，或重新新增。"};
+    return {data:{version:2, items:[], selectedId:null}, warning:"未能讀取常用車站；你仍可使用完整看板，或重新新增。"};
   }
 }
 
@@ -53,14 +56,14 @@ function saveFavorites(storage, data) {
 }
 
 function addFavorite(data, item) {
-  if (!validFavorite(item)) throw new Error("Choose a station and direction");
+  if (!validFavorite(item)) throw new Error("Choose a station");
   const duplicate = data.items.some(entry => favoriteId(entry) === favoriteId(item));
-  const items = duplicate ? data.items : [...data.items, {line:item.line, code:item.code, direction:item.direction}];
-  return {data:{version:1, items, selectedId:favoriteId(item)}, duplicate};
+  const items = duplicate ? data.items : [...data.items, {line:item.line, code:item.code}];
+  return {data:{version:2, items, selectedId:favoriteId(item)}, duplicate};
 }
 
 function removeFavorite(data, id) {
-  return {version:1, items:data.items.filter(item => favoriteId(item) !== id), selectedId:data.selectedId === id ? null : data.selectedId};
+  return {version:2, items:data.items.filter(item => favoriteId(item) !== id), selectedId:data.selectedId === id ? null : data.selectedId};
 }
 
 // Access to the storage property itself may throw in restricted browser contexts.

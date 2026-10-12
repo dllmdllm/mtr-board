@@ -672,3 +672,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
   .board { flex: none; overflow-y: visible; }
   .favorites-panel, .service-panel { max-height: none; }
 }
+.direction-heading { margin: 0; font-size: 14px; line-height: 1.5; padding-bottom: 6px; border-bottom: 1px solid #7c8994; }
+.is-favorite .train-list { align-content: start; }
+.is-favorite .plat-num { white-space: nowrap; }
+@media (max-width: 360px) { .is-favorite .card-body { grid-template-columns: minmax(0, 1fr); } }
