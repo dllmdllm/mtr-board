@@ -61,8 +61,8 @@ function parseTrafficNews(xml) {
 function favoriteNewsSummary(notice, favoriteItems) {
   const matches = [...new Set(favoriteItems.filter(item => notice.lines.includes(item.line)).map(item => item.line))];
   if (matches.length) return `你收藏嘅${matches.map(line=>LINE_NAMES[line]).join("、")}同呢則通告提及嘅路線有關；邊段、邊個方向受影響，請睇運輸署原文。`;
-  if (!favoriteItems.length) return "未有收藏車站方向；受影響區段以運輸署原文為準。";
-  if (!notice.lines.length) return "通告未有足夠路線資料，未能判斷同你收藏嘅方向有冇關。";
+  if (!favoriteItems.length) return "未有收藏車站；受影響區段以運輸署原文為準。";
+  if (!notice.lines.length) return "通告未有足夠路線資料，未能判斷同你收藏嘅車站有冇關。";
   return "通告提及嘅路線暫未同你嘅收藏對上；唔代表你嘅行程一定冇影響。";
 }
 

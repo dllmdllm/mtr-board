@@ -61,27 +61,43 @@ test('station concurrency is bounded and every result can make progress',async()
 test('favorites start empty, tolerate corrupt/unavailable storage and validate persisted choices',()=>{
   const c=runtime();
   assert.equal(c.loadFavorites({getItem:()=>null}).data.items.length,0);
-  for(const raw of ['broken','{"version":2,"items":[]}','{"version":1,"items":[{"line":"EAL","code":"BAD","direction":"UP"}]}']){
+  for(const raw of ['broken','{"version":3,"items":[]}','{"version":1,"items":[{"line":"EAL","code":"BAD","direction":"UP"}]}']){
     const loaded=c.loadFavorites({getItem:()=>raw});assert.equal(loaded.data.items.length,0);assert.ok(loaded.warning);
   }
   assert.ok(c.loadFavorites({getItem(){throw new Error('blocked')}}).warning);
   assert.ok(c.saveFavorites({setItem(){throw new Error('quota')}},{version:1,items:[],selectedId:null}));
 });
-test('favorites save/remove, deduplicate station+line+direction, and preserve explicit selected shortcut',()=>{
-  const c=runtime(),initial={version:1,items:[],selectedId:null};
-  const first=c.addFavorite(initial,{line:'EAL',code:'FAN',direction:'DOWN'});
+test('station favorites save/remove and deduplicate independent of old direction fields',()=>{
+  const c=runtime(),initial={version:2,items:[],selectedId:null};
+  const first=c.addFavorite(initial,{line:'EAL',code:'FAN'});
   assert.equal(first.data.items.length,1);assert.equal(first.duplicate,false);
-  const duplicate=c.addFavorite(first.data,{line:'EAL',code:'FAN',direction:'DOWN'});
+  const duplicate=c.addFavorite(first.data,{line:'EAL',code:'FAN',direction:'UP'});
   assert.equal(duplicate.data.items.length,1);assert.equal(duplicate.duplicate,true);
-  const opposite=c.addFavorite(duplicate.data,{line:'EAL',code:'FAN',direction:'UP'});
-  assert.equal(opposite.data.items.length,2);assert.equal(opposite.data.selectedId,'EAL-FAN-UP');
-  let stored;assert.equal(c.saveFavorites({setItem:(key,value)=>stored=value},opposite.data),'');
-  const loaded=c.loadFavorites({getItem:()=>stored});assert.equal(loaded.data.selectedId,'EAL-FAN-UP');
-  assert.equal(c.removeFavorite(loaded.data,'EAL-FAN-UP').selectedId,null);
-  assert.equal(c.removeFavorite(loaded.data,'EAL-FAN-DOWN').selectedId,'EAL-FAN-UP');
-  assert.throws(()=>c.addFavorite(initial,{line:'EAL',code:'FAN',direction:'SIDEWAYS'}));
-  const normalized=c.normalizeFavorites({version:1,items:[...opposite.data.items,opposite.data.items[0]],selectedId:'deleted'});
-  assert.equal(normalized.items.length,2);assert.equal(normalized.selectedId,null);
+  const next=c.addFavorite(duplicate.data,{line:'EAL',code:'FOT'});
+  assert.equal(next.data.items.length,2);assert.equal(next.data.selectedId,'EAL-FOT');
+  let stored;assert.equal(c.saveFavorites({setItem:(key,value)=>stored=value},next.data),'');
+  assert.ok(!stored.includes('direction'));
+  const loaded=c.loadFavorites({getItem:()=>stored});assert.equal(loaded.data.selectedId,'EAL-FOT');
+  assert.equal(c.removeFavorite(loaded.data,'EAL-FOT').selectedId,null);
+  assert.equal(c.removeFavorite(loaded.data,'EAL-FAN').selectedId,'EAL-FOT');
+  assert.throws(()=>c.addFavorite(initial,{line:'EAL',code:'BAD'}));
+});
+test('legacy directional favorites migrate without losing stations or selected identity',()=>{
+  const c=runtime(),legacy={version:1,items:[{line:'EAL',code:'FAN',direction:'DOWN'},{line:'EAL',code:'FAN',direction:'UP'},{line:'EAL',code:'FOT',direction:'UP'}],selectedId:'EAL-FAN-UP'};
+  const loaded=c.loadFavorites({getItem:()=>JSON.stringify(legacy)});
+  assert.equal(loaded.data.version,2);assert.equal(loaded.data.items.length,2);assert.equal(loaded.data.selectedId,'EAL-FAN');assert.equal(loaded.migrated,true);
+  assert.equal(c.normalizeFavorites({...legacy,selectedId:'removed'}).selectedId,null);
+  assert.equal(c.normalizeFavorites({...legacy,selectedId:null}).selectedId,null);
+  assert.throws(()=>c.normalizeFavorites({...legacy,items:[{line:'EAL',code:'FAN',direction:'INVALID'}]}));
+  assert.ok(c.saveFavorites({setItem(){throw new Error('blocked')}},loaded.data));assert.equal(loaded.data.items.length,2);
+});
+test('direction missing or malformed is distinct from explicitly empty service',()=>{
+  const c=runtime(),partial=structuredClone(fixture);
+  assert.equal(c.classifySchedule(partial,'EAL-ADM',null,now).downUnavailable,false);
+  delete partial.data['EAL-ADM'].DOWN;
+  assert.equal(c.classifySchedule(partial,'EAL-ADM',null,now).downUnavailable,true);
+  partial.data['EAL-ADM'].DOWN=[{time:'-',plat:'4'}];
+  assert.equal(c.classifySchedule(partial,'EAL-ADM',null,now).downUnavailable,true);
 });
 test('source-based favorites relevance never invents station/direction impact or all-clear status',()=>{
   const c=runtime();

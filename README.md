@@ -74,7 +74,7 @@ MTR timestamps are parsed as Hong Kong time, retaining the API date across midni
 
 ## Favorites and official traffic news (local feature)
 
-Save a station, its line and UP/DOWN direction in the favorites editor. Shortcuts open only that station/direction; line tabs and `完整路線` restore the full board. The last explicitly opened shortcut is restored on the next visit. Favorites stay in this browser's local storage. No examples are pre-saved. Corrupt or unavailable storage falls back to the full board and a clear warning; shortcuts still work for the current visit when writing is blocked.
+Save a station and its line in the favorites editor; no direction selection is needed. Shortcuts open both directions together, with each train’s actual platform and destination; line tabs and `完整路線` restore the full board. The last explicitly opened shortcut is restored on the next visit. Favorites stay in this browser's local storage. Existing version1 directional shortcuts migrate to version2 station shortcuts: opposite directions at the same station/line merge, and the selected station is retained. Explicitly empty directions show no upcoming trains; missing/malformed direction data is marked unavailable. Direction headings never imply fixed platform numbers. No examples are pre-saved. Corrupt or unavailable storage falls back to the full board and a clear warning; shortcuts still work for the current visit when writing is blocked.
 
 `service-news.js` reads the Transport Department's documented, CORS-enabled XML directly, separately from train arrivals. It does not use or redistribute undocumented MTR website JSON. Sources:
 
