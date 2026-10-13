@@ -74,7 +74,7 @@ MTR timestamps are parsed as Hong Kong time, retaining the API date across midni
 
 ## Favorites and official traffic news (local feature)
 
-Save a station and its line in the favorites editor; no direction selection is needed. Shortcuts open both directions together, with each train’s actual platform and destination; line tabs and `完整路線` restore the full board. The last explicitly opened shortcut is restored on the next visit. Favorites stay in this browser's local storage. Existing version1 directional shortcuts migrate to version2 station shortcuts: opposite directions at the same station/line merge, and the selected station is retained. Explicitly empty directions show no upcoming trains; missing/malformed direction data is marked unavailable. Direction headings never imply fixed platform numbers. No examples are pre-saved. Corrupt or unavailable storage falls back to the full board and a clear warning; shortcuts still work for the current visit when writing is blocked.
+Save a station and its line in the favorites editor; no direction selection is needed. All saved stations appear together in saved order, each with both directions and each train’s actual platform and destination; line tabs and `完整路線` restore the full board. The favorites view is restored on reload; the full-board choice is preserved when explicitly selected. `全部常用站` returns to all saved boards. Favorites stay in this browser's local storage. Existing version1 directional shortcuts migrate to version2 station shortcuts: opposite directions at the same station/line merge, and the selected station is retained. Explicitly empty directions show no upcoming trains; missing/malformed direction data is marked unavailable. Direction headings never imply fixed platform numbers. No examples are pre-saved. Corrupt or unavailable storage falls back to the full board and a clear warning; shortcuts still work for the current visit when writing is blocked.
 
 `service-news.js` reads the Transport Department's documented, CORS-enabled XML directly, separately from train arrivals. It does not use or redistribute undocumented MTR website JSON. Sources:
 
@@ -93,3 +93,9 @@ node tests/favorites-news-browser.cjs
 ```
 
 Use the existing Playwright/Chromium environment variables described above. The checks use a loopback server and mocked feeds, test local persistence/duplicate/removal/direction races, unavailable/corrupt storage, source-status parsing, relevance, stale retrievals and request privacy. No external service is mutated.
+
+### All saved station boards
+
+Saving multiple stations displays every saved station on the same board in insertion order, including stations from different lines. Clicking a station shortcut retains all saved boards; `全部常用站` returns from a full-line view. Removing one station retains the others, and removing the last returns to the full board with a clear empty state. Refresh requests are deduplicated per station/line and coalesced while in flight; each result renders independently, so a slow/error/stale station does not blank the others.
+
+Run `node tests/multi-favorites-browser.cjs` with the existing Playwright/Chromium environment variables for four-station mixed-line mobile tests, ordering/persistence, slow/error/stale isolation and polling coalescing. Screenshots use mocked official-format data, including a393px×852px viewport and an additional tall mobile-width capture of all four boards.
