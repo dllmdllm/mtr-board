@@ -46,7 +46,7 @@ let browser;
   await page.locator('#refresh').click();await page.waitForFunction(()=>activeRefresh!==null);
   mode='ready';await save('FOT');
   for(const route of held)await route.fulfill({json:schedule(route,'TIK')}).catch(()=>{});
-  assert.equal(await page.locator('.station-card:visible').count(),1);const fot=page.locator('.station-card[data-code="FOT"][data-line="EAL"]');assert.match(await fot.innerText(),/火炭/);assert.doesNotMatch(await fot.innerText(),/調景嶺/);assert.equal(await fot.locator('[data-dir="DOWN"]').isVisible(),true);
+  assert.equal(await page.locator('.station-card:visible').count(),2);const fot=page.locator('.station-card[data-code="FOT"][data-line="EAL"]');assert.match(await fot.innerText(),/火炭/);assert.doesNotMatch(await fot.innerText(),/調景嶺/);assert.equal(await fot.locator('[data-dir="DOWN"]').isVisible(),true);
   for(const [state,label] of [['empty','暫無班次'],['missing','此方向資料未提供'],['invalid','此方向資料未提供'],['http','更新失敗'],['absence','暫未能提供列車資料']]){mode=state;await page.evaluate(()=>scheduleCache.clear());await page.locator('#refresh').click();await page.waitForFunction(()=>activeRefresh===null);assert.equal(await fot.locator('[data-dir="DOWN"]').isVisible(),true);assert.equal(await fot.locator('[data-dir="UP"]').isVisible(),true);assert.match(await fot.locator('[data-dir="DOWN"]').innerText(),new RegExp(label));if(state==='missing'||state==='invalid')assert.match(await page.locator('#last-update').innerText(),/部分/);if(state==='empty'||state==='missing'||state==='invalid')assert.match(await fot.locator('[data-dir="UP"]').innerText(),/羅湖/);}
   mode='ready';await page.evaluate(()=>scheduleCache.clear());await page.locator('#refresh').click();await page.waitForFunction(()=>activeRefresh===null);
   await page.locator('#service-panel summary').first().click();
@@ -66,7 +66,7 @@ let browser;
   newsHTTP=503;await refreshNews();assert.equal(await page.evaluate(()=>serviceNews.kind),'fetch-error');assert.match(await page.locator('#service-notices').innerText(),/最近成功檢查/);
   newsHTTP=200;newsBody=xml();await refreshNews();await page.evaluate(()=>{serviceNews.checkedAt-=360001;renderServiceNews();});assert.match(await page.locator('#service-summary').innerText(),/檢查已過期/);
   assert.ok(newsRequests.every(r=>r.url==='https://www.td.gov.hk/tc/special_news/trafficnews.xml' && r.method==='GET' && r.body===null));
-  await page.locator('.favorite-shortcut button[aria-label^="移除 火炭"]').click();await page.waitForFunction(()=>activeRefresh===null);assert.ok(await page.locator('.station-card:visible').count()>1);assert.equal(await page.locator('#favorites-full').getAttribute('aria-pressed'),'true');
+  await page.locator('.favorite-shortcut button[aria-label^="移除 火炭"]').click();await page.waitForFunction(()=>activeRefresh===null);assert.equal(await page.locator('.station-card:visible').count(),1);assert.equal(await page.locator('#favorites-all').getAttribute('aria-pressed'),'true');
   await page.locator('.line-tab[data-line="KTL"]').click();await page.waitForFunction(()=>activeRefresh===null);assert.equal(await page.locator('.station-card[data-line="KTL"]:visible').count(),17);
   while(await page.locator('.favorite-shortcut').count())await page.locator('.favorite-shortcut button[aria-label^="移除"]').first().click();
   const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem(FAVORITES_KEY)));assert.equal(stored.items.length,0);assert.equal(stored.selectedId,null);

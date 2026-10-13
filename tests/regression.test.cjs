@@ -112,3 +112,19 @@ test('source-based favorites relevance never invents station/direction impact or
   assert.equal(c.relevantNewsText('港鐵東鐵綫服務受阻。'),true);
   assert.equal(c.relevantNewsText('MTR train service arrangements'),true);
 });
+test('favorites view includes every saved station across lines and excludes unrelated stations',()=>{
+  const c=runtime();
+  vm.runInContext("favorites={version:2,items:[{line:'EAL',code:'FAN'},{line:'EAL',code:'FOT'},{line:'KTL',code:'KOB'},{line:'EAL',code:'SHS'}],selectedId:'EAL-SHS'};showingFavorites=true;activeLine='XFR';",c);
+  for(const [line,code] of [['EAL','FAN'],['EAL','FOT'],['KTL','KOB'],['EAL','SHS']])assert.equal(c.shouldShowCard({dataset:{line,code}}),true);
+  assert.equal(c.shouldShowCard({dataset:{line:'EAL',code:'ADM'}}),false);
+  vm.runInContext("showingFavorites=false;activeLine='KTL';",c);
+  assert.equal(c.shouldShowCard({dataset:{line:'KTL',code:'KOB'}}),true);assert.equal(c.shouldShowCard({dataset:{line:'EAL',code:'FAN'}}),false);
+});
+test('four station persistence keeps insertion order through duplicate save and middle removal',()=>{
+  const c=runtime();let data={version:2,items:[],selectedId:null};
+  for(const [line,code] of [['EAL','FAN'],['EAL','FOT'],['KTL','KOB'],['EAL','SHS']])data=c.addFavorite(data,{line,code}).data;
+  data=c.addFavorite(data,{line:'EAL',code:'FAN'}).data;
+  assert.equal(data.items.map(c.favoriteId).join(','),'EAL-FAN,EAL-FOT,KTL-KOB,EAL-SHS');
+  data=c.removeFavorite(data,'EAL-FOT');let serialized;c.saveFavorites({setItem:(key,value)=>serialized=value},data);
+  assert.equal(c.loadFavorites({getItem:()=>serialized}).data.items.map(c.favoriteId).join(','),'EAL-FAN,KTL-KOB,EAL-SHS');
+});

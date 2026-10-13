@@ -23,8 +23,9 @@ const loadedFavorites = loadFavorites(browserStorage());
 let favorites = loadedFavorites.data;
 let favoritesWarning = loadedFavorites.warning;
 if (loadedFavorites.migrated) favoritesWarning = saveFavorites(browserStorage(), favorites);
-let selectedFavorite = favorites.items.find(item => favoriteId(item) === favorites.selectedId) || null;
-if (selectedFavorite) activeLine = selectedFavorite.line;
+const restoredFavorite = favorites.items.find(item => favoriteId(item) === favorites.selectedId);
+let showingFavorites = !!restoredFavorite;
+if (restoredFavorite) activeLine = restoredFavorite.line;
 let visibleCards = [];
 let visibleRows = [];
 let refreshToken = 0;
@@ -80,6 +81,7 @@ function renderBoard() {
   STATIONS.forEach((s, idx) => {
     const card = makeCard(s);
     card.style.animationDelay = `${idx * 0.02}s`;
+    card._order = idx;
     board.appendChild(card);
   });
   if (cpBoard) board.appendChild(cpBoard);
@@ -94,7 +96,7 @@ function isPrimaryInterchangeCard(card) {
 }
 
 function shouldShowCard(card) {
-  if (selectedFavorite) return card.dataset.line === selectedFavorite.line && card.dataset.code === selectedFavorite.code;
+  if (showingFavorites) return favorites.items.some(item => item.line === card.dataset.line && item.code === card.dataset.code);
   if (activeLine === "XFR") return isPrimaryInterchangeCard(card);
   return card.dataset.line === activeLine;
 }
@@ -221,7 +223,7 @@ function updateRowCountdown(row) {
 
 function applyLineFilter() {
   lineTabs.forEach(btn => {
-    const selected = btn.dataset.line === activeLine;
+    const selected = !showingFavorites && btn.dataset.line === activeLine;
     btn.classList.toggle("active", selected);
     btn.setAttribute("aria-pressed", String(selected));
   });
@@ -231,12 +233,19 @@ function applyLineFilter() {
     const show = shouldShowCard(card);
     card.dataset.filtered = show ? "0" : "1";
     card.style.display = show ? "" : "none";
-    card.classList.toggle("xfr-mode", activeLine === "XFR" && show);
-    card.classList.toggle("is-favorite", !!selectedFavorite && show);
+    card.classList.toggle("xfr-mode", !showingFavorites && activeLine === "XFR" && show);
+    card.classList.toggle("is-favorite", !!showingFavorites && show);
     if (show) visibleCards.push(card);
   });
+  const cards = Array.from(document.querySelectorAll(".station-card"));
+  cards.sort((a,b)=>a._order-b._order).forEach(card=>board.appendChild(card));
+  if (showingFavorites) {
+    visibleCards.sort((a,b)=>favorites.items.findIndex(item=>favoriteId(item)===`${a.dataset.line}-${a.dataset.code}`)-favorites.items.findIndex(item=>favoriteId(item)===`${b.dataset.line}-${b.dataset.code}`));
+    visibleCards.forEach(card=>board.appendChild(card));
+  }
   if (cpBoard) {
-    cpBoard.style.display = activeLine === "EAL" && !selectedFavorite ? "" : "none";
+    board.appendChild(cpBoard);
+    cpBoard.style.display = activeLine === "EAL" && !showingFavorites ? "" : "none";
   }
 }
 
@@ -350,13 +359,13 @@ function renderSchedules() {
   let incomplete = false;
   visibleCards.forEach(card => {
     const { line, code, name } = card.dataset;
-    const lines = activeLine === "XFR" ? INTERCHANGE_LINES[name] || [line] : [line];
+    const lines = !showingFavorites && activeLine === "XFR" ? INTERCHANGE_LINES[name] || [line] : [line];
     const { downList, upList, downCol, upCol } = card._refs;
     downList.innerHTML = "";
     upList.innerHTML = "";
     card.style.display = "";
     downCol.style.display = "";
-    upCol.style.display = activeLine === "XFR" ? "none" : "";
+    upCol.style.display = !showingFavorites && activeLine === "XFR" ? "none" : "";
     lines.forEach(lineKey => {
       const key = `${lineKey}-${code}`;
       const saved = stationStates.get(key);
@@ -364,7 +373,7 @@ function renderSchedules() {
       if (state.kind === "ready") readyTimes.push(state.sourceMs);
       else incomplete = true;
       let down = downList, up = upList;
-      if (activeLine === "XFR") {
+      if (!showingFavorites && activeLine === "XFR") {
         const group = document.createElement("div");
         group.className = "xfr-group";
         group.style.setProperty("--line-color", LINE_COLORS[lineKey]);
@@ -379,8 +388,8 @@ function renderSchedules() {
         pair.appendChild(down); pair.appendChild(up);
         group.appendChild(pair); downList.appendChild(group);
       }
-      card.querySelector(".station-name").textContent = name;
-      if (selectedFavorite) {
+      card.querySelector(".station-name").textContent = showingFavorites ? `${name} · ${LINE_NAMES[lineKey]}` : name;
+      if (showingFavorites) {
         for (const [list, direction] of [[down, "DOWN"], [up, "UP"]]) {
           const heading = document.createElement("h3");
           heading.className = "direction-heading";
@@ -391,27 +400,27 @@ function renderSchedules() {
       }
       if (state.kind !== "ready") {
         down.appendChild(statusRow(state.text, state.url));
-        if (activeLine === "XFR") up.style.display = "none";
+        if (!showingFavorites && activeLine === "XFR") up.style.display = "none";
         else up.appendChild(statusRow(state.text, state.url));
         return;
       }
       if (state.text) down.appendChild(statusRow(state.text, state.url));
       const addTrains = (list, trains, dir) => {
-        if (!trains.length) list.appendChild(statusRow(selectedFavorite && (dir === "DOWN" ? state.downUnavailable : state.upUnavailable) ? "此方向資料未提供" : "暫無班次"));
+        if (!trains.length) list.appendChild(statusRow(showingFavorites && (dir === "DOWN" ? state.downUnavailable : state.upUnavailable) ? "此方向資料未提供" : "暫無班次"));
         trains.slice(0, visibleCount).forEach(train => {
           // Each row reads its own exact ETA; no countdown state survives replacement.
-          const row = trainRow(train, `${key}-${dir}-${train.time}-${train.dest}-${train.plat}`, !!selectedFavorite);
+          const row = trainRow(train, `${key}-${dir}-${train.time}-${train.dest}-${train.plat}`, !!showingFavorites);
           list.appendChild(row); visibleRows.push(row);
         });
       };
       addTrains(down, state.down, "DOWN");
       addTrains(up, state.up, "UP");
-      if (!selectedFavorite && state.down.length && !state.up.length) {
-        if (activeLine === "XFR") up.style.display = "none"; else upCol.style.display = "none";
-      } else if (!selectedFavorite && state.up.length && !state.down.length && !state.text) {
+      if (!showingFavorites && state.down.length && !state.up.length) {
+        if (!showingFavorites && activeLine === "XFR") up.style.display = "none"; else upCol.style.display = "none";
+      } else if (!showingFavorites && state.up.length && !state.down.length && !state.text) {
         if (activeLine === "XFR") down.style.display = "none"; else downCol.style.display = "none";
       }
-      if (!selectedFavorite && lineKey === "EAL" && code === "RAC" && !state.down.length && !state.up.length) card.style.display = "none";
+      if (!showingFavorites && lineKey === "EAL" && code === "RAC" && !state.down.length && !state.up.length) card.style.display = "none";
     });
   });
   const oldest = readyTimes.length ? Math.min(...readyTimes) : null;
@@ -422,7 +431,7 @@ function renderSchedules() {
 
 async function refreshAll() {
   if (document.hidden) return;
-  const view = `${activeLine}|${selectedFavorite ? favoriteId(selectedFavorite) : "all"}`;
+  const view = showingFavorites ? `favorites|${favorites.items.map(favoriteId).join(",")}` : `${activeLine}|all`;
   if (activeRefresh?.view === view) return activeRefresh.promise;
   activeRefresh?.controller.abort();
   queueController?.abort();
@@ -431,7 +440,7 @@ async function refreshAll() {
   const line = activeLine;
   const requestItems = new Map();
   visibleCards.forEach(card => {
-    const lines = line === "XFR" ? INTERCHANGE_LINES[card.dataset.name] || [card.dataset.line] : [card.dataset.line];
+    const lines = !showingFavorites && line === "XFR" ? INTERCHANGE_LINES[card.dataset.name] || [card.dataset.line] : [card.dataset.line];
     lines.forEach(lineKey => {
       const key = `${lineKey}-${card.dataset.code}`;
       requestItems.set(key, { key, line: lineKey, code: card.dataset.code });
@@ -439,7 +448,7 @@ async function refreshAll() {
   });
   board.classList.add("is-refreshing");
   renderSchedules();
-  if (line === "EAL" && !selectedFavorite) {
+  if (line === "EAL" && !showingFavorites) {
     if (cpBoard) cpBoard.textContent = "口岸資料更新中";
     queueController = new AbortController();
     const queueSignal = queueController.signal;
@@ -484,7 +493,7 @@ toggleButtons.forEach(btn => {
 
 lineTabs.forEach(btn => btn.addEventListener("click", () => {
   activeLine = btn.dataset.line || "EAL";
-  selectedFavorite = null;
+  showingFavorites = false;
   favorites.selectedId = null;
   persistFavorites();
   try { browserStorage().setItem(ACTIVE_LINE_KEY, activeLine); } catch { /* Selection still works for this visit. */ }
@@ -546,7 +555,7 @@ function persistFavorites() {
 }
 
 function openFavorite(item) {
-  selectedFavorite = item;
+  showingFavorites = true;
   activeLine = item.line;
   favorites.selectedId = favoriteId(item);
   persistFavorites();
@@ -568,7 +577,7 @@ function renderFavoriteShortcuts(message = "") {
     const open = document.createElement("button");
     open.type = "button";
     open.textContent = label;
-    open.setAttribute("aria-pressed", String(selectedFavorite && favoriteId(selectedFavorite) === favoriteId(item) || false));
+    open.setAttribute("aria-pressed", String(showingFavorites && favorites.selectedId === favoriteId(item)));
     open.addEventListener("click", () => openFavorite(item));
     const remove = document.createElement("button");
     remove.type = "button";
@@ -577,17 +586,20 @@ function renderFavoriteShortcuts(message = "") {
     remove.addEventListener("click", () => {
       const wasSelected = favorites.selectedId === favoriteId(item);
       favorites = removeFavorite(favorites, favoriteId(item));
-      if (wasSelected) selectedFavorite = null;
+      if (wasSelected) favorites.selectedId = favorites.items.length ? favoriteId(favorites.items[0]) : null;
+      if (!favorites.items.length) showingFavorites = false;
       persistFavorites();
       renderFavoriteShortcuts("已移除快捷鍵");
       document.querySelector("#favorites-editor summary").focus();
-      if (wasSelected) { applyLineFilter(); refreshAll(); }
+      applyLineFilter(); refreshAll();
     });
     group.append(open, remove);
     shortcuts.appendChild(group);
   });
-  document.getElementById("favorites-full").setAttribute("aria-pressed", String(!selectedFavorite));
-  document.getElementById("favorites-message").textContent = favoritesWarning || message || (favorites.items.length ? "快捷鍵同時顯示兩個方向；月台號碼按官方班次資料顯示。" : "尚未儲存常用車站。選擇路線及車站來新增快捷鍵。");
+  document.getElementById("favorites-all").disabled = !favorites.items.length;
+  document.getElementById("favorites-all").setAttribute("aria-pressed", String(showingFavorites));
+  document.getElementById("favorites-full").setAttribute("aria-pressed", String(!showingFavorites));
+  document.getElementById("favorites-message").textContent = favoritesWarning || (favorites.items.length ? message || "所有常用站按收藏次序一起顯示，每站保留兩方向及實際月台。" : `${message ? `${message}。` : ""}尚未儲存常用車站。選擇路線及車站來新增快捷鍵。`);
 }
 
 function initializeFavorites() {
@@ -619,8 +631,14 @@ function initializeFavorites() {
     document.getElementById("favorites-editor").open = false;
     document.querySelector(".favorite-shortcut button[aria-pressed=true]")?.focus();
   });
+  document.getElementById("favorites-all").addEventListener("click", () => {
+    if (!favorites.items.length) return;
+    showingFavorites = true;
+    favorites.selectedId ||= favoriteId(favorites.items[0]);
+    persistFavorites(); renderFavoriteShortcuts(); applyLineFilter(); refreshAll();
+  });
   document.getElementById("favorites-full").addEventListener("click", () => {
-    selectedFavorite = null;
+    showingFavorites = false;
     favorites.selectedId = null;
     persistFavorites();
     renderFavoriteShortcuts();

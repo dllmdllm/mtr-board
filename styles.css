@@ -676,3 +676,9 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .is-favorite .train-list { align-content: start; }
 .is-favorite .plat-num { white-space: nowrap; }
 @media (max-width: 360px) { .is-favorite .card-body { grid-template-columns: minmax(0, 1fr); } }
+.favorites-head { flex-wrap: wrap; }
+@media (max-width: 760px) {
+  .favorites-shortcuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .favorite-shortcut button:first-child { font-size: 13px; }
+}
+@media (max-width: 360px) { .favorites-shortcuts { grid-template-columns: minmax(0, 1fr); } }
