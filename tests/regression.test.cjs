@@ -12,7 +12,7 @@ function runtime(overrides = {}) {
     ...overrides});
   for (const file of ['config.js','api.js','favorites.js','service-news.js','app.js']) {
     let code = fs.readFileSync(path.join(root,file),'utf8');
-    if (file === 'app.js') code = code.replace('initializeFavorites();\nrenderBoard();\nrefreshAll();\nstartRefreshTimer();\ninitializeServiceNews();', '');
+    if (file === 'app.js') code = code.replace('initializeFavorites();\ninitializeBoardMenu();\nrenderBoard();\nrefreshAll();\nstartRefreshTimer();\ninitializeServiceNews();', '');
     vm.runInContext(code,context);
   }
   return context;
@@ -127,4 +127,15 @@ test('four station persistence keeps insertion order through duplicate save and 
   assert.equal(data.items.map(c.favoriteId).join(','),'EAL-FAN,EAL-FOT,KTL-KOB,EAL-SHS');
   data=c.removeFavorite(data,'EAL-FOT');let serialized;c.saveFavorites({setItem:(key,value)=>serialized=value},data);
   assert.equal(c.loadFavorites({getItem:()=>serialized}).data.items.map(c.favoriteId).join(','),'EAL-FAN,KTL-KOB,EAL-SHS');
+});
+test('mobile management defaults closed with favorites and keeps empty setup and desktop accessible',()=>{
+  const menu={open:true,querySelector:()=>({focus(){}})},label={textContent:''};let change;
+  const media={matches:true,addEventListener:(name,fn)=>change=fn};
+  const c=runtime({window:{matchMedia:()=>media}});
+  const original=c.document.getElementById;c.document.getElementById=id=>id==='board-menu'?menu:id==='board-menu-label'?label:original(id);
+  vm.runInContext("favorites={version:2,items:[{line:'EAL',code:'FAN'}],selectedId:'EAL-FAN'}",c);
+  c.initializeBoardMenu();assert.equal(menu.open,false);c.updateMenuLabel();assert.match(label.textContent,/1 個常用站/);
+  media.matches=false;change();assert.equal(menu.open,true);c.collapseMobileMenu();assert.equal(menu.open,true);
+  media.matches=true;change();assert.equal(menu.open,false);
+  vm.runInContext('favorites.items=[]',c);c.updateMenuLabel();assert.equal(menu.open,true);assert.match(label.textContent,/新增/);
 });

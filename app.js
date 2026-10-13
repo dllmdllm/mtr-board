@@ -488,6 +488,7 @@ toggleButtons.forEach(btn => {
       b.setAttribute("aria-pressed", String(b === btn));
     });
     renderSchedules();
+    collapseMobileMenu();
   });
 });
 
@@ -500,6 +501,7 @@ lineTabs.forEach(btn => btn.addEventListener("click", () => {
   renderFavoriteShortcuts();
   applyLineFilter();
   refreshAll();
+  collapseMobileMenu();
 }));
 
 function tickCountdown() {
@@ -544,6 +546,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 initializeFavorites();
+initializeBoardMenu();
 renderBoard();
 refreshAll();
 startRefreshTimer();
@@ -560,12 +563,14 @@ function openFavorite(item) {
   favorites.selectedId = favoriteId(item);
   persistFavorites();
   renderFavoriteShortcuts();
-  document.querySelector(".favorite-shortcut button[aria-pressed=true]")?.focus();
+  collapseMobileMenu();
   applyLineFilter();
   refreshAll();
 }
 
 function renderFavoriteShortcuts(message = "") {
+  const feedback = document.getElementById("menu-feedback");
+  if (feedback && (message || favoritesWarning)) feedback.textContent = favoritesWarning || message;
   renderServiceNews();
   const shortcuts = document.getElementById("favorites-shortcuts");
   shortcuts.replaceChildren();
@@ -596,6 +601,7 @@ function renderFavoriteShortcuts(message = "") {
     group.append(open, remove);
     shortcuts.appendChild(group);
   });
+  updateMenuLabel();
   document.getElementById("favorites-all").disabled = !favorites.items.length;
   document.getElementById("favorites-all").setAttribute("aria-pressed", String(showingFavorites));
   document.getElementById("favorites-full").setAttribute("aria-pressed", String(!showingFavorites));
@@ -629,7 +635,7 @@ function initializeFavorites() {
     openFavorite(item);
     renderFavoriteShortcuts(result.duplicate ? "此快捷鍵已儲存" : "已儲存快捷鍵");
     document.getElementById("favorites-editor").open = false;
-    document.querySelector(".favorite-shortcut button[aria-pressed=true]")?.focus();
+    collapseMobileMenu();
   });
   document.getElementById("favorites-all").addEventListener("click", () => {
     if (!favorites.items.length) return;
@@ -642,7 +648,32 @@ function initializeFavorites() {
     favorites.selectedId = null;
     persistFavorites();
     renderFavoriteShortcuts();
-    applyLineFilter(); refreshAll();
+    applyLineFilter(); refreshAll(); collapseMobileMenu();
   });
   renderFavoriteShortcuts();
+}
+
+
+function updateMenuLabel() {
+  const label = document.getElementById("board-menu-label");
+  if (label) label.textContent = favorites.items.length ? `${favorites.items.length} 個常用站 · 管理／路線` : "新增常用站／選擇路線";
+  const menu = document.getElementById("board-menu");
+  if (menu && !favorites.items.length) menu.open = true;
+}
+
+function collapseMobileMenu() {
+  const menu = document.getElementById("board-menu");
+  if (menu && favorites.items.length && !favoritesWarning && window.matchMedia("(max-width: 760px)").matches) {
+    menu.open = false;
+    menu.querySelector("summary").focus();
+  }
+}
+
+function initializeBoardMenu() {
+  const menu = document.getElementById("board-menu");
+  if (!menu) return;
+  const media = window.matchMedia("(max-width: 760px)");
+  const reset = () => { menu.open = !media.matches || !favorites.items.length || !!favoritesWarning; };
+  reset();
+  media.addEventListener("change", reset);
 }
