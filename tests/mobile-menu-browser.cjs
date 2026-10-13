@@ -1,0 +1,30 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright-core');
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http');
+const root=path.join(__dirname,'..'),out=process.env.QA_OUTPUT||root,now=Date.parse('2026-10-11T14:56:59Z');
+const server=http.createServer((req,res)=>{const parts=req.url.split('?')[0].split('/').filter(Boolean),version=parts[0],file=parts[1]||'index.html';if(!['index.html','styles.css','config.js','api.js','favorites.js','service-news.js','app.js'].includes(file)){res.writeHead(404);res.end();return;}let target=path.join(root,file);if(version==='before'&&['index.html','styles.css','app.js'].includes(file))target=path.join(out,`mobile-menu-before-${file==='index.html'?'index.html':file==='styles.css'?'styles.css':'app.js'}`);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(fs.readFileSync(target));});
+let browser;
+(async()=>{
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});const measurements=[];
+ for(const viewport of [{width:390,height:844},{width:393,height:759},{width:375,height:667}]){
+  const pair={viewport};
+  for(const version of (['index.html','styles.css','app.js'].every(file=>fs.existsSync(path.join(out,`mobile-menu-before-${file}`))) ? ['before','after'] : ['after'])){
+   const context=await browser.newContext({viewport,timezoneId:'Asia/Hong_Kong'}),page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));await page.clock.setFixedTime(new Date(now));
+   await page.addInitScript(()=>localStorage.setItem('mtrBoardFavoritesV1',JSON.stringify({version:2,items:[{line:'EAL',code:'FAN'},{line:'EAL',code:'FOT'},{line:'KTL',code:'KOB'},{line:'EAL',code:'SHS'}],selectedId:'EAL-SHS'})));
+   await page.route('**/getSchedule.php?**',route=>{const u=new URL(route.request().url()),line=u.searchParams.get('line'),key=`${line}-${u.searchParams.get('sta')}`;const trains=(dest,plat)=>Array.from({length:4},(_,i)=>({dest,plat,time:new Date(now+(i+1)*90000+8*3600000).toISOString().slice(0,19).replace('T',' ')}));return route.fulfill({json:{status:1,data:{[key]:{curr_time:'2026-10-11 22:56:59',DOWN:trains(line==='KTL'?'WHA':'ADM','2'),UP:trains(line==='KTL'?'TIK':'LOW','1')}}}});});await page.route('**/special_news/trafficnews.xml',route=>route.fulfill({body:'<list/>'}));
+   await page.goto(`http://127.0.0.1:${server.address().port}/${version}/`);await page.waitForFunction(()=>activeRefresh===null&&visibleCards.every(card=>getComputedStyle(card).opacity==='1'));
+   pair[version]=await page.evaluate(()=>{const boardRect=board.getBoundingClientRect(),clipTop=boardRect.top,clipBottom=Math.min(innerHeight,boardRect.bottom);return {boardTop:Math.round(clipTop),boardHeight:Math.round(boardRect.height),fullStations:visibleCards.filter(card=>{const r=card.getBoundingClientRect();return r.top>=clipTop&&r.bottom<=clipBottom;}).length,partialStations:visibleCards.filter(card=>{const r=card.getBoundingClientRect();return r.top<clipBottom&&r.bottom>clipTop;}).length,font:getComputedStyle(visibleRows.find(row=>row.dataset.target)).fontSize,horizontalOverflow:document.documentElement.scrollWidth>innerWidth};});
+   await page.screenshot({path:path.join(out,`mobile-${version}-${viewport.width}x${viewport.height}.png`)});
+   if(version==='after'){
+    assert.equal(await page.locator('#board-menu').getAttribute('open'),null);assert.ok(pair.after.fullStations>=2,JSON.stringify(pair));assert.ok(pair.after.boardTop<200);assert.equal(pair.after.font,'14px');assert.equal(pair.after.horizontalOverflow,false);
+    for(let i=0;i<6;i++){await page.locator('#board-menu > summary').click();assert.equal(await page.locator('#favorite-save').isVisible(),false);assert.equal(await page.locator('#favorites-editor summary').isVisible(),true);await page.locator('#board-menu > summary').press('Enter');assert.equal(await page.locator('#board-menu').getAttribute('open'),null);}
+    await page.locator('#board-menu > summary').click();await page.locator('.toggle-btn[data-count="2"]').click();assert.equal(await page.locator('#board-menu').getAttribute('open'),null);assert.equal(await page.locator('.station-card[data-code="FAN"] [data-dir="DOWN"] .train-row[data-target]').count(),2);
+    await page.locator('#board-menu > summary').click();await page.locator('.toggle-btn[data-count="4"]').click();assert.equal(await page.locator('#board-menu').getAttribute('open'),null);
+    await page.locator('#board-menu > summary').click();await page.locator('#favorites-editor summary').click();assert.equal(await page.locator('#favorite-line').isVisible(),true);await page.locator('#favorite-line').selectOption('EAL');await page.locator('#favorite-station').selectOption('TAW');await page.locator('#favorite-save').click();await page.waitForFunction(()=>activeRefresh===null);assert.equal(await page.locator('#board-menu').getAttribute('open'),null);assert.equal(await page.locator('.station-card:visible').count(),5);
+    await page.locator('#board-menu > summary').click();while(await page.locator('.favorite-shortcut').count())await page.locator('.favorite-shortcut button[aria-label^="移除"]').first().click();await page.waitForFunction(()=>activeRefresh===null);assert.notEqual(await page.locator('#board-menu').getAttribute('open'),null);assert.equal(await page.locator('#favorites-editor summary').isVisible(),true);assert.match(await page.locator('#favorites-message').innerText(),/尚未儲存/);
+   }
+   assert.equal(errors.length,0,errors.join('\n'));await context.close();
+  }
+  if(pair.before)assert.ok(pair.after.boardHeight>pair.before.boardHeight);measurements.push(pair);console.log('PASS mobile before/after',JSON.stringify(pair));
+ }
+ fs.writeFileSync(path.join(out,'mobile-menu-measurements.json'),JSON.stringify(measurements,null,2));
+})().catch(error=>{console.error(error);process.exitCode=1}).finally(async()=>{await browser?.close();server.close();});

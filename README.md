@@ -99,3 +99,10 @@ Use the existing Playwright/Chromium environment variables described above. The 
 Saving multiple stations displays every saved station on the same board in insertion order, including stations from different lines. Clicking a station shortcut retains all saved boards; `全部常用站` returns from a full-line view. Removing one station retains the others, and removing the last returns to the full board with a clear empty state. Refresh requests are deduplicated per station/line and coalesced while in flight; each result renders independently, so a slow/error/stale station does not blank the others.
 
 Run `node tests/multi-favorites-browser.cjs` with the existing Playwright/Chromium environment variables for four-station mixed-line mobile tests, ordering/persistence, slow/error/stale isolation and polling coalescing. Screenshots use mocked official-format data, including a393px×852px viewport and an additional tall mobile-width capture of all four boards.
+
+
+### Compact mobile arrivals
+
+On mobile with existing favorites, management, route tabs and the train-count control default to a native disclosure labelled with the saved-station count. Opening it exposes all existing controls; saving/selecting a view returns to arrivals and preserves keyboard focus on the disclosure. Empty favorites and storage warnings retain an open setup/management path. Desktop controls remain expanded. Arrival text stays14px; spacing is compacted, and official-news details remain separately expandable.
+
+`tests/mobile-menu-browser.cjs` verifies390×844,393×759 and375×667 portrait viewports, repeated touch/keyboard disclosure flows, save/collapse and empty setup. It measures the current layout; if baseline index/styles/app snapshots named `mobile-menu-before-*` exist in `QA_OUTPUT`, it also records before/after screenshots and measurements. It uses the same existing Playwright/Chromium setup without installing anything.
