@@ -1,0 +1,45 @@
+name: MTR regression
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline checks
+        run: |
+          for zone in Asia/Hong_Kong UTC America/Los_Angeles; do
+            TZ="$zone" node --test tests/regression.test.cjs || exit 1
+          done
+          for file in config.js api.js favorites.js service-news.js app.js tests/*.cjs; do
+            node --check "$file" || exit 1
+          done
+          python3 -B -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Prepare ephemeral browser runner
+        run: |
+          npm install --prefix "$RUNNER_TEMP/mtr-browser" --no-save --ignore-scripts playwright@1.62.1
+          "$RUNNER_TEMP/mtr-browser/node_modules/.bin/playwright" install --with-deps chromium
+          echo "PLAYWRIGHT_MODULE=$RUNNER_TEMP/mtr-browser/node_modules/playwright" >> "$GITHUB_ENV"
+          echo "QA_OUTPUT=$RUNNER_TEMP/mtr-qa" >> "$GITHUB_ENV"
+      - name: Mocked browser checks
+        run: |
+          mkdir -p "$QA_OUTPUT"
+          for suite in tests/browser-regression.cjs tests/favorites-news-browser.cjs tests/multi-favorites-browser.cjs tests/mobile-menu-browser.cjs tests/audited-fixes-browser.cjs; do
+            node "$suite" || exit 1
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mtr-browser-qa
+          path: ${{ runner.temp }}/mtr-qa

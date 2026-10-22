@@ -16,20 +16,31 @@ const STALE_AFTER_MS = 90000;
 let activeRefresh = null;
 let queueController = null;
 const ACTIVE_LINE_KEY = "activeLine";
+const BOARD_VIEW_KEY = "mtrBoardViewV1";
+function loadBoardView(storage) {
+  try {
+    const value = JSON.parse(storage.getItem(BOARD_VIEW_KEY));
+    if (value?.version === 1 && ["line", "favorites"].includes(value.view) && (value.line === "XFR" || Object.hasOwn(LINE_NAMES, value.line))) return value;
+  } catch { /* Older or unavailable storage falls back to the legacy selection. */ }
+  return null;
+}
+const restoredView = loadBoardView(browserStorage());
 let activeLine = "EAL";
 try { activeLine = browserStorage().getItem(ACTIVE_LINE_KEY) || "EAL"; } catch { /* Use the full board when storage is unavailable. */ }
-if (activeLine !== "XFR" && !LINE_NAMES[activeLine]) activeLine = "EAL";
+if (activeLine !== "XFR" && !Object.hasOwn(LINE_NAMES, activeLine)) activeLine = "EAL";
+if (restoredView) activeLine = restoredView.line;
 const loadedFavorites = loadFavorites(browserStorage());
 let favorites = loadedFavorites.data;
 let favoritesWarning = loadedFavorites.warning;
 if (loadedFavorites.migrated) favoritesWarning = saveFavorites(browserStorage(), favorites);
 const restoredFavorite = favorites.items.find(item => favoriteId(item) === favorites.selectedId);
-let showingFavorites = !!restoredFavorite;
-if (restoredFavorite) activeLine = restoredFavorite.line;
+let showingFavorites = restoredView ? restoredView.view === "favorites" && favorites.items.length > 0 : !!restoredFavorite;
+if (showingFavorites && restoredFavorite && !restoredView) activeLine = restoredFavorite.line;
 let visibleCards = [];
 let visibleRows = [];
 let refreshToken = 0;
 let refreshTimer = null;
+let nextScheduleExpiry = Infinity;
 
 function hexToRgb(hex) {
   const cleaned = hex.replace("#", "");
@@ -164,14 +175,14 @@ function classifySchedule(data, key, error, now = Date.now()) {
   if (now - sourceMs > STALE_AFTER_MS || sourceMs - now > STALE_AFTER_MS) return { kind: "stale", text: "資料已過期，請重試", sourceMs };
   const validTrains = trains => (Array.isArray(trains) ? trains : []).filter(t => t && Number.isFinite(parseTimeToMs(t.time)));
   const down = validTrains(entry.DOWN), up = validTrains(entry.UP);
-  const downUnavailable = !Array.isArray(entry.DOWN) || (entry.DOWN.length > 0 && down.length === 0);
-  const upUnavailable = !Array.isArray(entry.UP) || (entry.UP.length > 0 && up.length === 0);
+  const downUnavailable = !Array.isArray(entry.DOWN) || down.length !== entry.DOWN.length;
+  const upUnavailable = !Array.isArray(entry.UP) || up.length !== entry.UP.length;
   return { kind: "ready", sourceMs, down, up, downUnavailable, upUnavailable, text: data.isdelay === "Y" ? "列車延誤" : "" };
 }
 
-function formatCountdown(sec) {
-  if (sec <= -GRACE_AFTER_ZERO) return "已開";
-  if (sec <= 59) return "就到";
+function formatCountdown(sec, timeType) {
+  if (sec < 0) return "逾時";
+  if (sec <= 59) return timeType === "D" ? "將開" : timeType === "A" ? "將到" : "即將";
   const mins = Math.ceil(sec / 60);
   return `${mins} 分`;
 }
@@ -187,20 +198,21 @@ function trainRow(train, key, showPlatformLabel = false) {
     return row;
   }
   const destName = CODE_TO_NAME.get(train.dest) || train.dest || "--";
-  const mins = formatCountdown(Math.floor((computeTargetMs(train) - Date.now()) / 1000));
+  const mins = formatCountdown(Math.floor((computeTargetMs(train) - Date.now()) / 1000), train.timetype);
   const route = train.route === "RAC" ? "（經馬場）" : "";
-  const event = train.timetype === "D" ? "開出" : "到站";
+  const event = train.timetype === "D" ? "開出" : train.timetype === "A" ? "到站" : "時間";
   const plat = train.plat ?? "--";
   const time = train.time ?? "--";
   const color = colorForPlat(plat);
   if (color) row.style.setProperty("--platform-color", color);
   row.dataset.key = key;
+  row.dataset.timeType = train.timetype || "";
   const targetMs = computeTargetMs(train);
   if (!Number.isNaN(targetMs)) row.dataset.target = String(targetMs);
-  row.title = `P${plat} | ${event} ${time}（香港時間）${route}`;
+  row.title = `P${plat} | 預計${event} ${time}（香港時間）${route}；時間已過不代表已到站或已開出`;
   row.innerHTML = `
     <span class="train-dest"><span class="plat-num">${showPlatformLabel ? "月台 " : ""}${escapeHtml(plat)}</span> ${escapeHtml(destName)}${route}</span>
-    <span class="train-right"><span class="train-mins">${mins}</span><span class="train-hint"></span></span>
+    <span class="train-right"><span class="train-mins">${mins}</span><span class="train-hint" aria-label="預計${event}">${event === "時間" ? "估計" : event}</span></span>
   `;
   return row;
 }
@@ -211,14 +223,12 @@ function updateRowCountdown(row) {
   if (!targetMs) return;
   const remainingSec = Math.floor((targetMs - Date.now()) / 1000);
   const minsEl = row.querySelector(".train-mins");
-  const hintEl = row.querySelector(".train-hint");
-  const label = formatCountdown(remainingSec);
-  const shouldBlink = label === "就到" || label === "已開";
+  const label = formatCountdown(remainingSec, row.dataset.timeType);
+  const shouldBlink = remainingSec >= 0 && remainingSec <= 59;
   if (minsEl) {
-    minsEl.textContent = label;
+    if (minsEl.textContent !== label) minsEl.textContent = label;
     minsEl.classList.toggle("blink", shouldBlink);
   }
-  if (hintEl) hintEl.textContent = "";
 }
 
 function applyLineFilter() {
@@ -360,18 +370,31 @@ function renderSchedules() {
   visibleCards.forEach(card => {
     const { line, code, name } = card.dataset;
     const lines = !showingFavorites && activeLine === "XFR" ? INTERCHANGE_LINES[name] || [line] : [line];
+    const states = lines.map(lineKey => {
+      const key = `${lineKey}-${code}`, saved = stationStates.get(key);
+      const state = classifySchedule(saved?.data, key, saved?.error);
+      if (state.kind === "ready") readyTimes.push(state.sourceMs);
+      if (state.kind !== "ready" || state.downUnavailable || state.upUnavailable) incomplete = true;
+      return state;
+    });
+    // Source heartbeats update the header, but unchanged content keeps its DOM and focus.
+    const signature = JSON.stringify([showingFavorites, activeLine === "XFR", visibleCount,
+      states.map(({sourceMs, ...content}) => content)]);
+    if (signature === card._scheduleSignature) {
+      card.style.display = card._scheduleDisplay;
+      visibleRows.push(...card.querySelectorAll(".train-row[data-target]"));
+      return;
+    }
+    card._scheduleSignature = signature;
     const { downList, upList, downCol, upCol } = card._refs;
     downList.innerHTML = "";
     upList.innerHTML = "";
     card.style.display = "";
     downCol.style.display = "";
     upCol.style.display = !showingFavorites && activeLine === "XFR" ? "none" : "";
-    lines.forEach(lineKey => {
+    lines.forEach((lineKey, index) => {
       const key = `${lineKey}-${code}`;
-      const saved = stationStates.get(key);
-      const state = classifySchedule(saved?.data, key, saved?.error);
-      if (state.kind === "ready") readyTimes.push(state.sourceMs);
-      else incomplete = true;
+      const state = states[index];
       let down = downList, up = upList;
       if (!showingFavorites && activeLine === "XFR") {
         const group = document.createElement("div");
@@ -396,7 +419,6 @@ function renderSchedules() {
           heading.textContent = `${DIRECTION_LABELS[lineKey][direction]}方向`;
           list.appendChild(heading);
         }
-        if (state.downUnavailable || state.upUnavailable) incomplete = true;
       }
       if (state.kind !== "ready") {
         down.appendChild(statusRow(state.text, state.url));
@@ -406,7 +428,9 @@ function renderSchedules() {
       }
       if (state.text) down.appendChild(statusRow(state.text, state.url));
       const addTrains = (list, trains, dir) => {
-        if (!trains.length) list.appendChild(statusRow(showingFavorites && (dir === "DOWN" ? state.downUnavailable : state.upUnavailable) ? "此方向資料未提供" : "暫無班次"));
+        const unavailable = dir === "DOWN" ? state.downUnavailable : state.upUnavailable;
+        if (unavailable) list.appendChild(statusRow(trains.length ? "此方向部分資料未提供" : "此方向資料未提供"));
+        else if (!trains.length) list.appendChild(statusRow("暫無班次"));
         trains.slice(0, visibleCount).forEach(train => {
           // Each row reads its own exact ETA; no countdown state survives replacement.
           const row = trainRow(train, `${key}-${dir}-${train.time}-${train.dest}-${train.plat}`, !!showingFavorites);
@@ -415,15 +439,17 @@ function renderSchedules() {
       };
       addTrains(down, state.down, "DOWN");
       addTrains(up, state.up, "UP");
-      if (!showingFavorites && state.down.length && !state.up.length) {
+      if (!showingFavorites && state.down.length && !state.up.length && !state.upUnavailable) {
         if (!showingFavorites && activeLine === "XFR") up.style.display = "none"; else upCol.style.display = "none";
-      } else if (!showingFavorites && state.up.length && !state.down.length && !state.text) {
+      } else if (!showingFavorites && state.up.length && !state.down.length && !state.text && !state.downUnavailable) {
         if (activeLine === "XFR") down.style.display = "none"; else downCol.style.display = "none";
       }
-      if (!showingFavorites && lineKey === "EAL" && code === "RAC" && !state.down.length && !state.up.length) card.style.display = "none";
+      if (!showingFavorites && lineKey === "EAL" && code === "RAC" && !state.down.length && !state.up.length && !state.downUnavailable && !state.upUnavailable) card.style.display = "none";
     });
+    card._scheduleDisplay = card.style.display;
   });
   const oldest = readyTimes.length ? Math.min(...readyTimes) : null;
+  nextScheduleExpiry = readyTimes.length ? Math.min(...readyTimes) + STALE_AFTER_MS + 1 : Infinity;
   lastUpdate.textContent = oldest === null ? (incomplete ? "資料未更新" : "--:--:--") : `${incomplete ? "部分 " : ""}${hongKongTime(oldest)}`;
   lastUpdate.title = "目前可用列車資料的最早來源時間（香港時間）；口岸資料獨立更新";
   updateAllRows();
@@ -497,7 +523,6 @@ lineTabs.forEach(btn => btn.addEventListener("click", () => {
   showingFavorites = false;
   favorites.selectedId = null;
   persistFavorites();
-  try { browserStorage().setItem(ACTIVE_LINE_KEY, activeLine); } catch { /* Selection still works for this visit. */ }
   renderFavoriteShortcuts();
   applyLineFilter();
   refreshAll();
@@ -511,7 +536,8 @@ function tickCountdown() {
   countdownEl.classList.toggle("blink", remaining <= 5);
   const countdownPill = document.getElementById("countdown-pill");
   if (countdownPill) countdownPill.classList.toggle("blink", remaining <= 5);
-  renderSchedules();
+  if (Date.now() >= nextScheduleExpiry) renderSchedules();
+  else updateAllRows();
   if (remaining === 0) {
     refreshAll();
   }
@@ -555,6 +581,11 @@ initializeServiceNews();
 
 function persistFavorites() {
   favoritesWarning = saveFavorites(browserStorage(), favorites);
+  try {
+    browserStorage().setItem(BOARD_VIEW_KEY, JSON.stringify({version:1, line:activeLine, view:showingFavorites ? "favorites" : "line"}));
+  } catch {
+    favoritesWarning ||= "此瀏覽器未能儲存看板選擇；本次仍可使用，重新開啟後可能重設。";
+  }
 }
 
 function openFavorite(item) {
@@ -641,7 +672,7 @@ function initializeFavorites() {
     if (!favorites.items.length) return;
     showingFavorites = true;
     favorites.selectedId ||= favoriteId(favorites.items[0]);
-    persistFavorites(); renderFavoriteShortcuts(); applyLineFilter(); refreshAll();
+    persistFavorites(); renderFavoriteShortcuts(); applyLineFilter(); refreshAll(); collapseMobileMenu();
   });
   document.getElementById("favorites-full").addEventListener("click", () => {
     showingFavorites = false;
