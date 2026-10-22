@@ -2,6 +2,7 @@
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright-core');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http');
+const {visibleButtonSizes}=require('./browser-helpers.cjs');
 const root=path.join(__dirname,'..');
 const now=Date.parse('2026-10-11T14:56:59Z');
 const server=http.createServer((req,res)=>{
@@ -38,13 +39,16 @@ let browser;
     assert.equal(await page.locator('#last-update').innerText(),'22:56:59');
     assert.equal(queued.length,2);
     assert.equal(await page.evaluate(async()=>{try{await fetchJson(`${CP_PROXY_BASE}?target=test`,20);return "unexpected success";}catch(error){return error.name;}}), 'AbortError'); // Hung queues have not blocked all sixteen stations.
-    const geometry=await page.evaluate(()=>({columns:getComputedStyle(board).gridTemplateColumns.split(' ').length,font:getComputedStyle(document.querySelector('.train-row')).fontSize,buttons:[...document.querySelectorAll('button')].map(b=>({w:b.getBoundingClientRect().width,h:b.getBoundingClientRect().height})),overflow:document.documentElement.scrollWidth>innerWidth}));
+    const geometry=await page.evaluate(()=>({columns:getComputedStyle(board).gridTemplateColumns.split(' ').length,font:getComputedStyle(document.querySelector('.train-row')).fontSize,overflow:document.documentElement.scrollWidth>innerWidth}));
+    geometry.buttons=await page.evaluate(visibleButtonSizes);
     assert.equal(geometry.columns,1);assert.equal(geometry.font,'14px');assert.ok(geometry.buttons.every(b=>b.w>=44&&b.h>=44));assert.equal(geometry.overflow,false);
     assert.equal(await page.locator('.line-tab[data-line="EAL"]').getAttribute('aria-pressed'),'true');
     await page.locator('.toggle-btn[data-count="2"]').click();assert.equal(await page.locator('.toggle-btn[data-count="2"]').getAttribute('aria-pressed'),'true');
     await page.evaluate(()=>{const row=document.querySelector('.train-row[data-target]');row.dataset.target=String(Date.now()-9000);updateRowCountdown(row);});
-    assert.equal(await adm.locator('.train-mins').last().innerText(),'已開');
-    await page.evaluate(()=>{renderSchedules()});assert.equal(await adm.locator('.train-mins').last().innerText(),'4 分');
+    assert.equal(await adm.locator('.train-mins').last().innerText(),'逾時');
+    await page.evaluate(()=>{stationStates.get('EAL-ADM').data.data['EAL-ADM'].UP[0].time='2026-10-11 23:01:53';renderSchedules();});
+    assert.equal(await adm.locator('.train-mins').last().innerText(),'5 分');
+    await page.evaluate(()=>{stationStates.get('EAL-ADM').data.data['EAL-ADM'].UP[0].time='2026-10-11 23:00:53';renderSchedules();});assert.equal(await adm.locator('.train-mins').last().innerText(),'4 分');
     await page.clock.setFixedTime(new Date('2026-10-11T15:59:30Z'));
     await page.evaluate(()=>{stationStates.set('EAL-ADM',{data:{status:1,data:{'EAL-ADM':{curr_time:'2026-10-11 23:59:30',UP:[{time:'2026-10-12 00:01:00',dest:'LOW',plat:'1'}],DOWN:[]}}}});renderSchedules();});
     assert.equal(await adm.locator('.train-mins').last().innerText(),'2 分');

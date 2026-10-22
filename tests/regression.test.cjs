@@ -39,13 +39,21 @@ test('official alert, absence, empty-success, delay, stale and transport failure
   assert.equal(classify(null,new Error('HTTP 429')).kind,'error');
   c.navigator.onLine=false;assert.match(classify(null,new Error()).text,/離線/);
 });
-test('replacement ETA immediately replaces departed countdown and agrees with row target',()=>{
+test('replacement ETA replaces an overdue estimate without claiming confirmed departure',()=>{
   const c=runtime();
   const label={classList:{toggle(){}}};
   const row={dataset:{target:String(Date.now()-9000),key:'ADM-UP-0'},querySelector:s=>s==='.train-mins'?label:null};
-  c.updateRowCountdown(row);assert.equal(label.textContent,'已開');
+  c.updateRowCountdown(row);assert.equal(label.textContent,'逾時');
   row.dataset.target=String(Date.now()+240000);c.updateRowCountdown(row);assert.equal(label.textContent,'4 分');
   row.dataset.target=String(Date.now()+600000);c.updateRowCountdown(row);assert.equal(label.textContent,'10 分');
+});
+test('countdown distinguishes arrival, departure, unknown and overdue estimates',()=>{
+  const c=runtime();
+  assert.equal(c.formatCountdown(30,'A'),'將到');
+  assert.equal(c.formatCountdown(30,'D'),'將開');
+  assert.equal(c.formatCountdown(30,''),'即將');
+  for(const type of ['A','D',''])for(const seconds of [-1,-8,-120])assert.equal(c.formatCountdown(seconds,type),'逾時');
+  assert.equal(c.formatCountdown(240,'D'),'4 分');
 });
 test('timeout remains active through response-body parsing and external cancellation works',async()=>{
   let timer,cleared=false;
@@ -98,6 +106,27 @@ test('direction missing or malformed is distinct from explicitly empty service',
   assert.equal(c.classifySchedule(partial,'EAL-ADM',null,now).downUnavailable,true);
   partial.data['EAL-ADM'].DOWN=[{time:'-',plat:'4'}];
   assert.equal(c.classifySchedule(partial,'EAL-ADM',null,now).downUnavailable,true);
+  partial.data['EAL-ADM'].DOWN.push({time:'2026-10-11 23:00:53',plat:'4'});
+  const mixed=c.classifySchedule(partial,'EAL-ADM',null,now);
+  assert.equal(mixed.downUnavailable,true);assert.equal(mixed.down.length,1);
+});
+test('board selection persists line and view in one validated record, with legacy fallback',()=>{
+  const values=new Map([['activeLine','EAL']]);
+  const storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
+  const c=runtime({localStorage:storage});
+  vm.runInContext("activeLine='KTL';showingFavorites=false;persistFavorites();",c);
+  assert.deepEqual(JSON.parse(values.get('mtrBoardViewV1')),{version:1,line:'KTL',view:'line'});
+  const restored=runtime({localStorage:storage});
+  assert.equal(vm.runInContext('activeLine',restored),'KTL');assert.equal(vm.runInContext('showingFavorites',restored),false);
+  for(const value of ['broken','null','{"version":1,"line":"BAD","view":"line"}','{"version":1,"line":"toString","view":"line"}','{"version":1,"line":"EAL","view":"bad"}'])assert.equal(c.loadBoardView({getItem:()=>value}),null);
+  assert.equal(vm.runInContext('activeLine',runtime({localStorage:{getItem:key=>key==='activeLine'?'XFR':null}})),'XFR');
+});
+test('countdown ticks update rows incrementally and invalidate schedules only on expiry',()=>{
+  const c=runtime();let renders=0,updates=0;
+  c.renderSchedules=()=>renders++;c.updateAllRows=()=>updates++;
+  vm.runInContext('remaining=12;nextScheduleExpiry=Date.now()+10000;',c);
+  c.tickCountdown();c.tickCountdown();assert.equal(renders,0);assert.equal(updates,2);
+  vm.runInContext('nextScheduleExpiry=Date.now()-1;',c);c.tickCountdown();assert.equal(renders,1);
 });
 test('source-based favorites relevance never invents station/direction impact or all-clear status',()=>{
   const c=runtime();

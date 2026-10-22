@@ -38,6 +38,7 @@ function parseTrafficNews(xml) {
   if (doc.querySelector("parsererror") || doc.documentElement.tagName !== "list") throw new Error("Invalid traffic news XML");
   const read = (message, tag) => message.querySelector(tag)?.textContent.trim() || "";
   const notices = [];
+  let rejected = 0;
   for (const message of doc.querySelectorAll("message")) {
     const id = read(message,"INCIDENT_NUMBER") || read(message,"ID");
     const cn = plainNewsText(read(message,"CONTENT_CN")), en = plainNewsText(read(message,"CONTENT_EN"));
@@ -45,7 +46,10 @@ function parseTrafficNews(xml) {
     const detail = plainNewsText(read(message,"INCIDENT_DETAIL_CN") || read(message,"INCIDENT_DETAIL_EN"));
     const published = read(message,"ANNOUNCEMENT_DATE");
     const status = read(message,"INCIDENT_STATUS_EN").toUpperCase();
-    if (!id || !(cn || en) || !Number.isFinite(newsTime(published)) || !["NEW","UPDATED","CLOSED"].includes(status)) throw new Error("Unverified traffic news fields");
+    if (!id || !(cn || en) || !Number.isFinite(newsTime(published)) || !["NEW","UPDATED","CLOSED"].includes(status)) {
+      rejected++;
+      continue;
+    }
     const text = `${heading} ${detail} ${cn} ${en}`;
     if (!relevantNewsText(text)) continue;
     const lines = Object.keys(NEWS_LINE_NAMES).filter(line => {
@@ -55,7 +59,7 @@ function parseTrafficNews(xml) {
     notices.push({id, heading, detail, content:cn || en, published, publishedMs:newsTime(published), status, lines,
       location:read(message,"LOCATION_CN") || read(message,"LOCATION_EN"), direction:read(message,"DIRECTION_CN") || read(message,"DIRECTION_EN")});
   }
-  return {notices:notices.sort((a,b)=>b.publishedMs-a.publishedMs), total:doc.querySelectorAll("message").length};
+  return {notices:notices.sort((a,b)=>b.publishedMs-a.publishedMs), total:doc.querySelectorAll("message").length, rejected};
 }
 
 function favoriteNewsSummary(notice, favoriteItems) {
@@ -80,8 +84,10 @@ function renderServiceNews() {
   const active = serviceNews.notices.filter(notice=>notice.status !== "CLOSED");
   const related = active.some(notice=>favorites.items.some(item=>notice.lines.includes(item.line)));
   summary.textContent = active.length ? `${active.length} 則港鐵／鐵路相關通告${related ? " · 涉及收藏路線" : ""}` : serviceNews.total === 0 ? "來源暫未有通告" : "暫未見未完結的港鐵相關通告";
+  if (serviceNews.rejected) summary.textContent = `部分消息未能驗證（${serviceNews.rejected}/${serviceNews.total} 則） · ${active.length ? summary.textContent : "未有可用的未完結鐵路通告"}`;
   const checked = document.createElement("p");
   checked.textContent = `檢查時間：${newsCheckedTime(serviceNews.checkedAt)}（香港時間）。未見通告唔代表全線正常；消息唔會改寫官方到站時間。`;
+  if (serviceNews.rejected) checked.textContent += `已略過 ${serviceNews.rejected} 則格式未能驗證的消息，保留其餘有效通告；來源資料不完整。`;
   list.appendChild(checked);
   serviceNews.notices.forEach(notice=>{
     const item = document.createElement("article");
@@ -112,7 +118,7 @@ async function refreshServiceNews() {
     const xml = await response.text();
     phase = "parse-error";
     const parsed = parseTrafficNews(xml);
-    if (token === newsToken && !controller.signal.aborted) serviceNews = {kind:"ready",notices:parsed.notices,total:parsed.total,checkedAt:Date.now()};
+    if (token === newsToken && !controller.signal.aborted) serviceNews = {kind:"ready",...parsed,checkedAt:Date.now()};
   } catch {
     if (token === newsToken) serviceNews = {kind:phase,notices:[],checkedAt:serviceNews.checkedAt};
   } finally {

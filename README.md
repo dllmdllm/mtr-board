@@ -106,3 +106,20 @@ Run `node tests/multi-favorites-browser.cjs` with the existing Playwright/Chromi
 On mobile with existing favorites, management, route tabs and the train-count control default to a native disclosure labelled with the saved-station count. Opening it exposes all existing controls; saving/selecting a view returns to arrivals and preserves keyboard focus on the disclosure. Empty favorites and storage warnings retain an open setup/management path. Desktop controls remain expanded. Arrival text stays14px; spacing is compacted, and official-news details remain separately expandable.
 
 `tests/mobile-menu-browser.cjs` verifies390×844,393×759 and375×667 portrait viewports, repeated touch/keyboard disclosure flows, save/collapse and empty setup. It measures the current layout; if baseline index/styles/app snapshots named `mobile-menu-before-*` exist in `QA_OUTPUT`, it also records before/after screenshots and measurements. It uses the same existing Playwright/Chromium setup without installing anything.
+
+### Audited reliability fixes
+
+Full-line, transfer and favorites boards distinguish explicitly empty service from missing or malformed directions. Valid trains survive mixed invalid records, with a partial-data warning. Arrival/departure estimates are labelled separately; an elapsed estimate reads `逾時`, which does not confirm an arrival or departure. Countdown ticks retain existing rows, and unchanged station results retain links and focus. Source expiry is still checked while counting down.
+
+Line and view are saved together in `mtrBoardViewV1`, with legacy selection fallback. `全部常用站` follows the same mobile collapse/focus behavior as other view controls. Traffic-news records are validated individually: valid warnings remain visible and rejected-record counts identify incomplete sources; structurally invalid XML still fails as a whole.
+
+Additional checks (no local installation required):
+
+```sh
+python3 -B -m unittest discover -s tests -p 'test_*.py' -v
+node tests/audited-fixes-browser.cjs
+```
+
+The Python tests import the dormant publication helper into disposable Git fixtures, replace its configured directory, and stub every helper commit/push call. They never run its watch loop or make a real push. The helper watches only the seven static app files and refuses wrong/detached branches, unrelated staged files, unresolved files, unexpected history, and failed Git checks. Existing local commits require manual review. Its configured publication location is unchanged.
+
+`.github/workflows/regression.yml` defines offline checks plus all five mocked browser suites, with read-only repository permissions and screenshot artifacts. Its ephemeral CI runner prepares its own pinned browser dependencies; local tests use the already installed browser. The workflow contains no deployment or publication step. Chromium viewport checks are measurements, not validation on an actual iPhone or Safari.
