@@ -1,3 +1,12 @@
+<!-- Deployment header, standardized 2026-11-03 -->
+
+**What:** static Hong Kong MTR Next Train dashboard — view live arrivals across a full line in a browser.
+**Open it:** double-click `index.html`, or serve the folder with `python3 -m http.server` and open the local address in a browser. Root files `index.html`, `styles.css`, `config.js`, `api.js`, `app.js` must stay together at the root.
+**Docs:** API spec PDFs, design notes and reference screenshots live in `docs/`.
+**Status:** static site, no server component; last updated 2026-08-17. Registry: ~/Projects/AGENTS.md.
+
+---
+
 # MTR Board
 
 A static Hong Kong MTR next train dashboard for scanning live arrivals across a full line.
